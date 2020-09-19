@@ -133,7 +133,7 @@ double* findIncircle(double ax, double ay, double bx, double by, double cx, doub
     double p = A + B + C;
     double s = p/2;
     double area = sqrt((s - A) * (s - B) * (s - C) / s);
-    double inradius = area / s;
+    double inradius = area;
 
     double ox = (A * ax + B * bx + C * cx) / p;
     double oy = (A * ay + B * by + C * cy) / p;
