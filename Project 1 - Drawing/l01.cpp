@@ -6,12 +6,6 @@
 
 using namespace std;
 
-void swap(int* a, int* b) {
-    int buf = *a;
-    a = b;
-    b = a;
-}
-
 void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
     cout << "Drawing line connecting (" << x1 << ", " << y1 << ") and (" << x2 << ", " << y2 << ").\n";
 
@@ -31,19 +25,23 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         cout << "X Major\n";
 
         int j = y1;
+
+        // Equivalent to (dy / dx) - 1
         int error = dy - dx;
 
         for (int i = x1; i <= x2; i++) {
             pixels[i][j] = color;
             
-            if (error >= 0) {
-                if (y2 > y1) {
-                    j += 1;
-                } else if (y2 < y1) {
-                    j -= 1;
-                }
+            // Error is greater than 0, so we know the line
+            // has moved up one pixel
+            if (error > 0 && y2 > y1) {
+                j += 1;
 
                 error -= dx;
+            } else if (error < 0 && y2 < y1) {
+                j -= 1;
+
+                error += dx;
             }
 
             error += dy;
@@ -64,14 +62,14 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         for (int i = y1; i <= y2; i++) {
             pixels[j][i] = color;
             
-            if (error >= 0) {
-                if (x2 > x1) {
-                    j += 1;
-                } else if (x2 < x1) {
-                    j -= 1;
-                }
+            if (error > 0 && x2 > x1) {
+                j += 1;
 
                 error -= dy;
+            } else if (error < 0 && x2 < x1) {
+                j -= 1;
+
+                error += dy;
             }
 
             error += dx;
@@ -80,6 +78,8 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
 }
 
 void drawCircle(int*** pixels, int center_x, int center_y, int radius, int* color) {
+    cout << "Drawing a circle centered at (" << center_x << ", " << center_y << ") with radius " << radius;
+
     int x, y, max_x, y2, y2_new, two_y;
 
     // we draw the pixels from the top until 45 degrees clockwise from the top
@@ -94,7 +94,7 @@ void drawCircle(int*** pixels, int center_x, int center_y, int radius, int* colo
 
     two_y = 2 * y - 1;
 
-    for (x = 0; x < max_x; x++) {
+    while (y >= x) {
         // when X increases, see if the Y value should decrease.
         if ((y2 - y2_new) >= two_y) {
             y2 -= two_y;
@@ -105,17 +105,19 @@ void drawCircle(int*** pixels, int center_x, int center_y, int radius, int* colo
         }
 
         // Set all symmetric points to 1
-        pixels[x][y] = color;
-        pixels[-x][y] = color;
-        pixels[x][-y] = color;
-        pixels[-x][-y] = color;
+        pixels[x + center_x][y + center_y] = color;
+        pixels[-x + center_x][y + center_y] = color;
+        pixels[x + center_x][-y + center_y] = color;
+        pixels[-x + center_x][-y + center_y] = color;
 
-        pixels[y][x] = color;
-        pixels[-y][x] = color;
-        pixels[y][-x] = color;
-        pixels[-y][-x] = color;
+        pixels[y + center_x][x + center_y] = color;
+        pixels[-y + center_x][x + center_y] = color;
+        pixels[y + center_x][-x + center_y] = color;
+        pixels[-y + center_x][-x + center_y] = color;
 
         y2_new -= 2 * x - 3;
+
+        x += 1;
     }
 }
 
@@ -148,32 +150,69 @@ int getRandom(int min, int max) {
     return min + range * (rand() / ((double) RAND_MAX));
 }
 
+double getRandom() {
+    return rand() / ((double) RAND_MAX);
+}
+
+double scale(double value, int max) {
+    return (int) (value * max);
+}
+
 int main() {
     // set up random seed
     srand(time(nullptr));
 
-    int width = 800;
-    int height = 800;
+    int width = 200;
+    int height = 200;
 
+    // initialize the image array
     int*** myArray = new int**[width];
-
-    int* WHITE = new int[3];
-    WHITE[0] = 1;
-    WHITE[1] = 1;
-    WHITE[2] = 1;
-
-    ofstream fileout("output.ppm");
-    fileout << "P3 " << width << " " << height << " 1" << "\n";
-
     initializeArray(myArray, width, height);
 
-    int x1, y1, x2, y2;
-    x1 = getRandom(0, width - 1);
-    y1 = getRandom(0, height - 1);
-    x2 = getRandom(0, width - 1);
-    y2 = getRandom(0, height - 1);
+    // These should be pointers
+    int* WHITE = new int[3];
+    WHITE[0] = WHITE[1] = WHITE[2] = 1;
 
-    drawBresenhams(myArray, x1, y1, x2, y2, WHITE);
+    int* RED = new int[3];
+    RED[0] = 1;
+    RED[1] = RED[2] = 0;
+
+    int* GREEN = new int[3];
+    GREEN[0] = GREEN[2] = 0;
+    GREEN[1] = 1;
+
+    int* BLUE = new int[3];
+    BLUE[0] = BLUE[1] = 0;
+    BLUE[2] = 1;
+
+    // Initialize random triangle points
+    // Internally, these will be points inside a unit square
+    double x1, y1, x2, y2, x3, y3, x1_scale, y1_scale, x2_scale, y2_scale, x3_scale, y3_scale;
+    x1 = getRandom();
+    y1 = getRandom();
+    x2 = getRandom();
+    y2 = getRandom();
+    x3 = getRandom();
+    y3 = getRandom();
+
+    x1_scale = scale(x1, width);
+    y1_scale = scale(y1, height);
+    x2_scale = scale(x2, width);
+    y2_scale = scale(y2, height);
+    x3_scale = scale(x3, width);
+    y3_scale = scale(y3, height);
+
+    // Draw the triangle
+    drawBresenhams(myArray, x1_scale, y1_scale, x2_scale, y2_scale, RED);
+    drawBresenhams(myArray, x1_scale, y1_scale, x3_scale, y3_scale, GREEN);
+    drawBresenhams(myArray, x2_scale, y2_scale, x3_scale, y3_scale, BLUE);
+
+    // Draw a circle
+    drawCircle(myArray, width / 2, height / 2, width / 4, WHITE);
+
+    // save the image
+    ofstream fileout("output.ppm");
+    fileout << "P3 " << width << " " << height << " 1" << "\n";
 
     printArray(myArray, fileout, width, height);
 
