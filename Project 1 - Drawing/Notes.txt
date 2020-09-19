@@ -1,0 +1,50 @@
+/*
+
+NOTES 2020/09/16
+
+The "stack size" is important in C++. When you're making arrays, allocate them dynamically.
+If you allocate them statically, you may run out of room on the stack.
+Always make sure to check your code by compiling it on the TJ Computer Systems Lab.
+
+Use the Integer Bresenham's Algorithm.
+
+Suggestion: Print out the algorithm so you can take notes and write in the margins.
+
+Mr. Jurj's explanation starts 13 minutes into the recording.
+
+Note about page 6 of Bresenham's algorithm: You don't need to increment i.
+That is a typo. i is incremented when you call "next i".
+
+With B's algorithm, there are many cases.
+One example is to use the Y-axis as the driving axis.
+There's also purely horizontal and purely vertical lines.
+You may need to write up to 10 methods.
+
+I don't want to write ten methods...
+Let's see.
+
+We can make a unit vector and step with the unit vector.
+
+If we want to keep it with integers though that would be more difficult...
+How many total iterations of the loop do we want?
+
+TX = total distance X
+TY = total distance Y
+
+Overall, the total number of pixels will be equal to max(tx, ty)
+So we can start off with a loop like that.
+
+Then, when we step:
+
+If tx > 0 x += 1, if tx < 0 x -= 1
+If ty > 0 y += 1, if ty < 0 y -= 1
+
+Keep track of the change in X and change in Y.
+
+Or... just see where the point needs to go in general.
+
+ty / tx should be dy / dx.
+
+I'll just do it the regular way and swap around the points
+
+*/
