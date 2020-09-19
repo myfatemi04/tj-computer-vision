@@ -121,6 +121,34 @@ void drawCircle(int*** pixels, int center_x, int center_y, int radius, int* colo
     }
 }
 
+double distance(double x1, double y1, double x2, double y2) {
+    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+}
+
+double* findIncircle(double ax, double ay, double bx, double by, double cx, double cy) {
+    double A = distance(bx, by, cx, cy);
+    double B = distance(ax, ay, cx, cy);
+    double C = distance(bx, by, ax, ay);
+
+    double p = A + B + C;
+    double s = p/2;
+    double area = sqrt((s - A) * (s - B) * (s - C) / s);
+    double inradius = area / s;
+
+    double ox = (A * ax + B * bx + C * cx) / p;
+    double oy = (A * ay + B * by + C * cy) / p;
+
+    double* incircle = new double[3];
+
+    incircle[0] = ox;
+    incircle[1] = oy;
+    incircle[2] = inradius;
+
+    cout << ox << " " << oy << " " << inradius << "\n";
+
+    return incircle;
+}
+
 void printArray(int*** array, ostream& out, int width, int height, int channels = 3) {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -185,9 +213,14 @@ int main() {
     BLUE[0] = BLUE[1] = 0;
     BLUE[2] = 1;
 
+    int* PURPLE = new int[3];
+    PURPLE[0] = PURPLE[2] = 1;
+    PURPLE[1] = 0;
+
     // Initialize random triangle points
     // Internally, these will be points inside a unit square
-    double x1, y1, x2, y2, x3, y3, x1_scale, y1_scale, x2_scale, y2_scale, x3_scale, y3_scale;
+    double x1, y1, x2, y2, x3, y3;
+    int x1_scale, y1_scale, x2_scale, y2_scale, x3_scale, y3_scale;
     x1 = getRandom();
     y1 = getRandom();
     x2 = getRandom();
@@ -207,8 +240,17 @@ int main() {
     drawBresenhams(myArray, x1_scale, y1_scale, x3_scale, y3_scale, GREEN);
     drawBresenhams(myArray, x2_scale, y2_scale, x3_scale, y3_scale, BLUE);
 
-    // Draw a circle
-    drawCircle(myArray, width / 2, height / 2, width / 4, WHITE);
+    myArray[x1_scale][y1_scale] = PURPLE;
+    myArray[x2_scale][y2_scale] = PURPLE;
+    myArray[x3_scale][y3_scale] = PURPLE;
+
+    // Draw incircle
+    double* incircle = findIncircle(x1, y1, x2, y2, x3, y3);
+    drawCircle(myArray,
+        scale(incircle[0], width), // x
+        scale(incircle[1], height), // y
+        scale(incircle[2], width), // radius
+        WHITE);
 
     // save the image
     ofstream fileout("output.ppm");
