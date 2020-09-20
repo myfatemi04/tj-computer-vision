@@ -26,8 +26,6 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
             dy = -dy;
         }
 
-        cout << "X Major\n";
-
         int j = y1;
 
         // Equivalent to (dy / dx) - 1
@@ -57,8 +55,6 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
             dx = -dx; // we swapped points, so these must be updated
             dy = -dy;
         }
-
-        cout << "Y Major\n";
 
         int j = x1;
         int error = dx - dy;
@@ -98,7 +94,7 @@ void drawCircle(int*** pixels, int center_x, int center_y, double radius, int* c
 
     // starts with the topmost point
     x = 0;
-    y = (int) radius;
+    y = round(radius);
 
     y2 = y * y;
     y2_new = y2;
@@ -139,11 +135,11 @@ double distance(double x1, double y1, double x2, double y2) {
 Circle findIncircle(double ax, double ay, double bx, double by, double cx, double cy) {
     double A = distance(bx, by, cx, cy);
     double B = distance(ax, ay, cx, cy);
-    double C = distance(bx, by, ax, ay);
+    double C = distance(ax, ay, bx, by);
 
     double p = A + B + C;
-    double s = p/2;
-    double area = sqrt((s - A) * (s - B) * (s - C) / s);
+    double s = p / 2;
+    double area = sqrt(((s - A) * (s - B) * (s - C)) / s);
     double inradius = area;
 
     Circle myCircle;
@@ -186,7 +182,7 @@ double* solveLinear(double a1, double b1, double c1, double a2, double b2, doubl
 Circle findCircumcircle(double ax, double ay, double bx, double by, double cx, double cy) {
     // find midpoints
     double ab_x = (ax + bx) / 2;
-    double ab_y = (ay + ay) / 2;
+    double ab_y = (ay + by) / 2;
     double ac_x = (ax + cx) / 2;
     double ac_y = (ay + cy) / 2;
 
@@ -206,10 +202,7 @@ Circle findCircumcircle(double ax, double ay, double bx, double by, double cx, d
     c = -a(x1) + b(y1)
     */
     
-    cout << "(" << ax << ", " << ay << ") (" << bx << ", " << by << ") (" << cx << ", " << cy << ")\n";
-
-    // the slope of AB = (y2 - y1) / (x2 - x1)
-    // to find the perpendicular slope, we do -(x2 - x1) / (y2 - y1)
+    // cout << "(" << ax << ", " << ay << ") (" << bx << ", " << by << ") (" << cx << ", " << cy << ")\n";
 
     // find a, b, and c of first side
     double ab_slope_numer = -(bx - ax);
