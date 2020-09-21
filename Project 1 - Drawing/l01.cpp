@@ -10,6 +10,13 @@ struct Circle {
     double x, y, radius;
 };
 
+void putPixel(int*** pixels, int* color, int x, int y, int width, int height) {
+    if (x < 0 || x >= width) return;
+    if (y < 0 || y >= height) return;
+
+    pixels[x][y] = color;
+}
+
 void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
     cout << "Drawing line connecting (" << x1 << ", " << y1 << ") and (" << x2 << ", " << y2 << ").\n";
 
@@ -32,7 +39,7 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         int error = dy - dx;
 
         for (int i = x1; i <= x2; i++) {
-            pixels[i][j] = color;
+            putPixel(pixels, color, i, j, 200, 200);
             
             // Error is greater than 0, so we know the line
             // has moved up one pixel
@@ -60,7 +67,7 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         int error = dx - dy;
 
         for (int i = y1; i <= y2; i++) {
-            pixels[j][i] = color;
+            putPixel(pixels, color, j, i, 200, 200);
             
             if (error > 0 && x2 > x1) {
                 j += 1;
@@ -75,13 +82,6 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
             error += dx;
         }
     }
-}
-
-void putPixel(int*** pixels, int* color, int x, int y, int width, int height) {
-    if (x < 0 || x >= width) return;
-    if (y < 0 || y >= height) return;
-
-    pixels[x][y] = color;
 }
 
 void drawCircle(int*** pixels, int center_x, int center_y, double radius, int* color) {
@@ -253,6 +253,29 @@ Circle findCircumcircle(double ax, double ay, double bx, double by, double cx, d
     return myCircle;
 }
 
+Circle find9PointCircle(double ax, double ay, double bx, double by, double cx, double cy) {
+    // The 9 point circle goes through the midpoints of each side
+    // So, it is the circumcircle of the midpoints of each side
+
+    // find midpoints
+    double ab_x = (ax + bx) / 2;
+    double ab_y = (ay + by) / 2;
+    double ac_x = (ax + cx) / 2;
+    double ac_y = (ay + cy) / 2;
+    double bc_x = (bx + cx) / 2;
+    double bc_y = (by + cy) / 2;
+
+    return findCircumcircle(ab_x, ab_y, ac_x, ac_y, bc_x, bc_y);
+}
+
+double* findCentroid(double ax, double ay, double bx, double by, double cx, double cy) {
+    double* point = new double[2];
+    point[0] = (ax + bx + cx) / 3;
+    point[1] = (ay + by + cy) / 3;
+
+    return point;
+}
+
 void printArray(int*** array, ostream& out, int width, int height, int channels = 3) {
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
@@ -363,6 +386,41 @@ int main() {
         scale(circumcircle.y, height), // y
         circumcircle.radius * width, // radius
         WHITE);
+
+    // Draw 9 point circle
+    Circle ninePointCircle = find9PointCircle(x1, y1, x2, y2, x3, y3);
+    drawCircle(myArray,
+        scale(ninePointCircle.x, width), // x
+        scale(ninePointCircle.y, height), // y
+        ninePointCircle.radius * width, // radius
+        WHITE);
+
+    // Find centroid
+    double* centroid = findCentroid(x1, y1, x2, y2, x3, y3);
+
+    // The euler line is the line between the centroid and circumcenter
+    // When we draw it, we must extend it to the edges of the screen
+    double lineSegmentLength = distance(centroid[0], centroid[1], circumcircle.x, circumcircle.y);
+
+    // we want to scale this line segment to be length sqrt2/2
+    double increase = sqrt(2) / lineSegmentLength;
+
+    double elAX = centroid[0];
+    double elAY = centroid[1];
+    double elBX = circumcircle.x;
+    double elBY = circumcircle.y;
+
+    double nelAX = elAX - (elBX - elAX) * increase;
+    double nelAY = elAY - (elBY - elAY) * increase;
+    double nelBX = elBX + (elBX - elAX) * increase;
+    double nelBY = elBY + (elBY - elAY) * increase;
+    
+    drawBresenhams(myArray,
+        scale(nelAX, width),
+        scale(nelAY, height),
+        scale(nelBX, width),
+        scale(nelBY, height),
+        PURPLE);
 
     // save the image
     ofstream fileout("output.ppm");
