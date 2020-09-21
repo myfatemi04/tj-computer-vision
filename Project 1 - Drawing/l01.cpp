@@ -87,11 +87,8 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
 void drawCircle(int*** pixels, int center_x, int center_y, double radius, int* color) {
     cout << "Drawing a circle centered at (" << center_x << ", " << center_y << ") with radius " << radius << "\n";
 
-    int x, y, max_x, y2, y2_new, two_y;
-
-    // we draw the pixels from the top until 45 degrees clockwise from the top
-    max_x = (int) (radius * 0.70710678);
-
+    int x, y, y2, y2_new, two_y;
+    
     // starts with the topmost point
     x = 0;
     y = round(radius);
