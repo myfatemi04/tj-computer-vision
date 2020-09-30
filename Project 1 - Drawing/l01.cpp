@@ -6,8 +6,9 @@
 
 using namespace std;
 
-struct Circle {
-    double x, y, radius;
+class Circle {
+    public:
+        double x, y, radius;
 };
 
 void putPixel(int*** pixels, int* color, int x, int y, int width, int height) {
@@ -39,7 +40,7 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         int error = dy - dx;
 
         for (int i = x1; i <= x2; i++) {
-            putPixel(pixels, color, i, j, 200, 200);
+            putPixel(pixels, color, i, j, 800, 800);
             
             // Error is greater than 0, so we know the line
             // has moved up one pixel
@@ -67,7 +68,7 @@ void drawBresenhams(int*** pixels, int x1, int y1, int x2, int y2, int* color) {
         int error = dx - dy;
 
         for (int i = y1; i <= y2; i++) {
-            putPixel(pixels, color, j, i, 200, 200);
+            putPixel(pixels, color, j, i, 800, 800);
             
             if (error > 0 && x2 > x1) {
                 j += 1;
@@ -88,7 +89,7 @@ void drawCircle(int*** pixels, int center_x, int center_y, double radius, int* c
     cout << "Drawing a circle centered at (" << center_x << ", " << center_y << ") with radius " << radius << "\n";
 
     int x, y, y2, y2_new, two_y;
-    
+
     // starts with the topmost point
     x = 0;
     y = round(radius);
@@ -109,15 +110,17 @@ void drawCircle(int*** pixels, int center_x, int center_y, double radius, int* c
         }
 
         // Set all symmetric points to 1
-        putPixel(pixels, color, x + center_x, y + center_y, 200, 200);
-        putPixel(pixels, color, x + center_x, -y + center_y, 200, 200);
-        putPixel(pixels, color, -x + center_x, y + center_y, 200, 200);
-        putPixel(pixels, color, -x + center_x, -y + center_y, 200, 200);
+        int width = 800, height = 800;
 
-        putPixel(pixels, color, y + center_x, x + center_y, 200, 200);
-        putPixel(pixels, color, y + center_x, -x + center_y, 200, 200);
-        putPixel(pixels, color, -y + center_x, x + center_y, 200, 200);
-        putPixel(pixels, color, -y + center_x, -x + center_y, 200, 200);
+        putPixel(pixels, color, x + center_x, y + center_y, width, height);
+        putPixel(pixels, color, x + center_x, -y + center_y, width, height);
+        putPixel(pixels, color, -x + center_x, y + center_y, width, height);
+        putPixel(pixels, color, -x + center_x, -y + center_y, width, height);
+
+        putPixel(pixels, color, y + center_x, x + center_y, width, height);
+        putPixel(pixels, color, y + center_x, -x + center_y, width, height);
+        putPixel(pixels, color, -y + center_x, x + center_y, width, height);
+        putPixel(pixels, color, -y + center_x, -x + center_y, width, height);
 
         y2_new -= 2 * x - 3;
 
@@ -314,8 +317,8 @@ int main() {
     // set up random seed
     srand(time(nullptr));
 
-    int width = 200;
-    int height = 200;
+    int width = 800;
+    int height = 800;
 
     // initialize the image array
     int*** myArray = new int**[width];
@@ -420,7 +423,7 @@ int main() {
         PURPLE);
 
     // save the image
-    ofstream fileout("output.ppm");
+    ofstream fileout("triangle.ppm");
     fileout << "P3 " << width << " " << height << " 1" << "\n";
 
     printArray(myArray, fileout, width, height);
