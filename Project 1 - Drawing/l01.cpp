@@ -288,13 +288,14 @@ void printArray(int*** array, ostream& out, int width, int height, int channels 
     }
 }
 
+// Initializes an array with the value 1
 void initializeArray(int*** array, int width, int height, int channels = 3) {
     for (int i = 0; i < width; i++) {
         array[i] = new int*[height];
         for (int j = 0; j < height; j++) {
             array[i][j] = new int[channels];
             for (int k = 0; k < channels; k++) {
-                array[i][j][k] = 0;
+                array[i][j][k] = 1;
             }
         }
     }
@@ -327,6 +328,9 @@ int main() {
     // These should be pointers
     int* WHITE = new int[3];
     WHITE[0] = WHITE[1] = WHITE[2] = 1;
+
+    int* BLACK = new int[3];
+    BLACK[0] = BLACK[1] = BLACK[2] = 0;
 
     int* RED = new int[3];
     RED[0] = 1;
@@ -377,7 +381,7 @@ int main() {
         scale(incircle.x, width), // x
         scale(incircle.y, height), // y
         incircle.radius * width, // radius
-        WHITE);
+        BLACK);
 
     // Draw circumcircle
     Circle circumcircle = findCircumcircle(x1, y1, x2, y2, x3, y3);
@@ -385,7 +389,7 @@ int main() {
         scale(circumcircle.x, width), // x
         scale(circumcircle.y, height), // y
         circumcircle.radius * width, // radius
-        WHITE);
+        BLACK);
 
     // Draw 9 point circle
     Circle ninePointCircle = find9PointCircle(x1, y1, x2, y2, x3, y3);
@@ -393,7 +397,7 @@ int main() {
         scale(ninePointCircle.x, width), // x
         scale(ninePointCircle.y, height), // y
         ninePointCircle.radius * width, // radius
-        WHITE);
+        BLACK);
 
     // Find centroid
     double* centroid = findCentroid(x1, y1, x2, y2, x3, y3);
