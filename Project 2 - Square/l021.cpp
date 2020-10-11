@@ -8,8 +8,40 @@ void printPoint(FILE* fptr, double* point) {
     fprintf(fptr, "(%.17f,%.17f)", point[0], point[1]);
 }
 
+bool between(double a, double b, double p) {
+    if (a < b) {
+        return a <= p && p <= b;
+    } else {
+        return b <= p && p <= a;
+    }
+}
+
+bool pointAbove(double* a, double* b, double* p) {
+    // vertical line must intersect
+    // first, finds the slope of the line
+    if (between(a[0], b[0], p[0])) {
+        // equation: y = mx + b
+        // a[1] = ma[0] + b
+        double slope = (b[1] - a[1]) / (b[0] - a[0]);
+        double intercept = a[1] - slope * a[0];
+        double segmentY = slope * p[0] + intercept;
+        return p[1] > segmentY;
+    } else {
+        return false;
+    }
+}
+
 bool pointInsideTriangle(double** triangle, double* pointToCheck) {
-    return false;
+    int count = 0;
+    if (pointAbove(triangle[0], triangle[1], pointToCheck)) count += 1;
+    if (pointAbove(triangle[1], triangle[2], pointToCheck)) count += 1;
+    if (pointAbove(triangle[2], triangle[0], pointToCheck)) count += 1;
+
+    if (count == 0 || count == 2) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 double getRandom() {
@@ -47,6 +79,7 @@ class Quadrilateral {
                 }
 
                 if (pointInsideTriangle(trianglePoints, checkPoint)) {
+                    cout << "Failed check " << checkPointIndex << "\n";
                     return false;
                 }
             }
@@ -57,6 +90,8 @@ class Quadrilateral {
         static Quadrilateral generateConvex() {
             while (true) {
                 Quadrilateral tmp (getRandomQuadrilateral());
+
+                cout << "Generating...\n";
 
                 if (tmp.isConvex()) {
                     return tmp;
@@ -97,8 +132,8 @@ class Quadrilateral {
 int main() {
     srand(time(nullptr));
 
-    Quadrilateral q = Quadrilateral::fromFile("points.txt");
-    q.save("points_copy.txt");
-    // Quadrilateral myConvexQuad = Quadrilateral::generateConvex();
-    // myConvexQuad.save("points.txt");
+    // Quadrilateral q = Quadrilateral::fromFile("points.txt");
+    // q.save("points_copy.txt");
+    Quadrilateral myConvexQuad = Quadrilateral::generateConvex();
+    myConvexQuad.save("points.txt");
 }
