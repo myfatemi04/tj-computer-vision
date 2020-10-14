@@ -79,7 +79,6 @@ class Quadrilateral {
                 }
 
                 if (pointInsideTriangle(trianglePoints, checkPoint)) {
-                    cout << "Failed check " << checkPointIndex << "\n";
                     return false;
                 }
             }
