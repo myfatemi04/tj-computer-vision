@@ -80,10 +80,12 @@ double** getRandomQuadrilateral() {
 
         // scale cos/sin to reach the square
         double maxMagnitude;
-        if (cos(angle) > sin(angle)) {
-            maxMagnitude = 1 / cos(angle);
+        double width = abs(cos(angle));
+        double height = abs(sin(angle));
+        if (width > height) {
+            maxMagnitude = 1 / width;
         } else {
-            maxMagnitude = 1 / sin(angle);
+            maxMagnitude = 1 / height;
         }
 
         double magnitude = maxMagnitude * getRandom();
@@ -94,6 +96,8 @@ double** getRandomQuadrilateral() {
         // Fit to the unit square
         points[i][0] = points[i][0] * 0.5 + 0.5;
         points[i][1] = points[i][1] * 0.5 + 0.5;
+
+        cout << "Generating point; m=" << magnitude << "; theta=" << (angle * 180 / 3.14159265) << "\n";
     }
 
     return points;
