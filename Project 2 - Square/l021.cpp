@@ -1,6 +1,8 @@
 #include<iostream>
 #include<fstream>
 #include<time.h>
+#include<math.h>
+#include "image.cpp"
 
 using namespace std;
 
@@ -48,12 +50,50 @@ double getRandom() {
     return rand() / ((double) RAND_MAX);
 }
 
+double* pointFromAngle(double angle, double mag) {
+    return new double[2] {mag * cos(angle), mag * sin(angle)};
+}
+
+/**
+ * Guaranteed to generate in clockwise order
+ * 1) Generates angles in clockwise order
+ * 2) Generates magnitudes randomly
+ * 3) Generates points based on angles and magnitudes
+ */
 double** getRandomQuadrilateral() {
-    double** points = new double*[4];
+    double* slices = new double[4];
+    double sum = 0;
+    double circleRads = 6.28318531;
+
     for (int i = 0; i < 4; i++) {
-        points[i] = new double[2];
-        points[i][0] = getRandom();
-        points[i][1] = getRandom();
+        // generate proportions for 'slices'
+        slices[i] = getRandom();
+
+        // keep track of the sum of the slices so we can scale them to 2pi
+        sum += slices[i];
+    }
+
+    double** points = new double*[4];
+    double angle = getRandom();
+    for (int i = 0; i < 4; i++) {
+        angle += circleRads * slices[i] / sum;
+
+        // scale cos/sin to reach the square
+        double maxMagnitude;
+        if (cos(angle) > sin(angle)) {
+            maxMagnitude = 1 / cos(angle);
+        } else {
+            maxMagnitude = 1 / sin(angle);
+        }
+
+        double magnitude = maxMagnitude * getRandom();
+
+        // Generate with magnitude/direction
+        points[i] = new double[2] {magnitude * cos(angle), magnitude * sin(angle)};
+
+        // Fit to the unit square
+        points[i][0] = points[i][0] * 0.5 + 0.5;
+        points[i][1] = points[i][1] * 0.5 + 0.5;
     }
 
     return points;
@@ -90,8 +130,6 @@ class Quadrilateral {
             while (true) {
                 Quadrilateral tmp (getRandomQuadrilateral());
 
-                cout << "Generating...\n";
-
                 if (tmp.isConvex()) {
                     return tmp;
                 }
@@ -127,6 +165,27 @@ class Quadrilateral {
             return Quadrilateral { points };
         }
 };
+
+void part2() {
+    // Quadrilateral myQuad = Quadrilateral::fromFile("points.txt");
+    // int white[3] = {1, 1, 1};
+    // Image outputImage(800, 800, 3, white);
+
+    // Create all possible squares
+
+    
+    // Display all 4 points of the quad by creating a circle with radius=2
+    // Draw square with the minimum area
+    // Save the coordinates of the 4 points as well as 4 vertices of all squares found
+    // Use the same precision as with the square
+    /*
+
+    (p1,p1) , (p2,p2) , (p3,p3) , (p4,p4)
+    (vx1,vy1) , (vx2,vy2) , (vx3,vy3) , (vx4,vy4) Area=ar1
+    ....
+
+    */
+}
 
 int main() {
     srand(time(nullptr));
