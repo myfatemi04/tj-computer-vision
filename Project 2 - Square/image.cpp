@@ -1,4 +1,6 @@
 #include<iostream>
+#include<vector>
+#include "geometry.cpp"
 
 void swap(int* a, int* b) {
     int tmp = *a;
@@ -8,7 +10,7 @@ void swap(int* a, int* b) {
 
 class Image {
     private:
-        int*** pixels;
+        int const*** pixels;
         int width, height, channels;
 
     public:
@@ -24,37 +26,41 @@ class Image {
             return channels;
         }
 
-        Image(int width_, int height_, int channels_, int* bgColor):  
+        Image(int width_, int height_, int channels_, const int* bgColor):  
             width(width_),
             height(height_),
             channels(channels_) {
-            pixels = new int**[height];
+            pixels = new int const**[height];
 
             // allocate arrays for all pixels
             for (int y = 0; y < height; y++) {
-                pixels[y] = new int*[width];
+                pixels[y] = new int const*[width];
                 for (int x = 0; x < width; x++) {
-                    pixels[y][x] = new int[channels];
-                    for (int c = 0; c < channels; c++) {
-                        pixels[y][x][c] = bgColor[c];
-                    }
+                    pixels[y][x] = bgColor;
                 }
             }
 
         }
 
-        void putPixel(int x, int y, int* color) {
+        void putPixel(int x, int y, const int* color) {
             if (x < 0 || x >= width) return;
             if (y < 0 || y >= height) return;
 
             pixels[y][x] = color;
         }
 
-        int* getPixel(int x, int y) {
+        const int* getPixel(int x, int y) {
             return pixels[y][x];
         }
 
-        void drawLine(int x1, int y1, int x2, int y2, int* color) {
+        void drawLineSegment(Point a, Point b, const int* color) {
+            int x1 = (int)a.getX();
+            int y1 = (int)a.getY();
+            int x2 = (int)b.getX();
+            int y2 = (int)b.getY();
+
+            // printf("Drawing from (%d, %d) to (%d, %d)\n", x1, y1, x2, y2);
+
             int dx = x2 - x1;
             int dy = y2 - y1;
 
@@ -94,6 +100,8 @@ class Image {
 
                     error += dy;
                 }
+
+                putPixel(x2, j, color);
             } else {
                 if (y1 > y2) {
                     swap(&x1, &x2);
@@ -112,7 +120,7 @@ class Image {
                 }
 
                 for (int i = y1; i <= y2; i++) {
-                    putPixel(i, j, color);
+                    putPixel(j, i, color);
                     
                     if (error > 0 && x2 > x1) {
                         j += 1;
@@ -126,10 +134,20 @@ class Image {
 
                     error += dx;
                 }
+
+                putPixel(j, y2, color);
             }
         }
 
-        void drawCircle(int center_x, int center_y, double radius, int* color) {
+        void drawLineSegment(LineSegment segment, const int* color) {
+            drawLineSegment(segment.getA(), segment.getB(), color);
+        }
+
+        void drawCircle(Circle circle, const int* color) {
+            double radius = circle.getRadius();
+            int center_x = (int) circle.getCenter().getX();
+            int center_y = (int) circle.getCenter().getY();
+
             int x, y, y2, y2_new, two_y;
 
             // starts with the topmost point
@@ -164,6 +182,20 @@ class Image {
                 y2_new -= 2 * x - 3;
 
                 x += 1;
+            }
+        }
+
+        void drawPolygon(Polygon polygon, const int* color, bool drawCircles = false) {
+            std::vector<LineSegment> sides = polygon.getSides();
+
+            for (int i = 0; i < polygon.length(); i++) {
+                drawLineSegment(polygon.getSide(i), color);
+            }
+
+            if (drawCircles) {
+                for (int i = 0; i < polygon.length(); i++) {
+                    drawCircle(Circle(polygon.getPoint(i), 2), color);
+                }
             }
         }
 
