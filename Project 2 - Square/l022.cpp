@@ -118,5 +118,4 @@ int main() {
 
     // part1();
     part2(Polygon::fromFile("points.txt", 4));
-    // part2(Polygon::generateConvex(4));
 }
