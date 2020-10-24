@@ -8,6 +8,7 @@ using namespace std;
 void part1() {
     Polygon myConvexQuad = Polygon::generateConvex(4);
     ofstream outputPointsFile("points.txt");
+    outputPointsFile.precision(17);
     outputPointsFile << myConvexQuad;
     outputPointsFile.close();
 }
