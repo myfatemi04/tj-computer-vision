@@ -23,9 +23,12 @@ class Color {
 };
 
 namespace Colors {
-    const int* WHITE = new int[3] { 1, 1, 1 };
-    const int* BLACK = new int[3] { 0, 0, 0 };
-    const int* RED = new int[3] { 1, 0, 0 };
-    const int* GREEN = new int[3] { 0, 1, 0 };
-    const int* BLUE = new int[3] { 0, 0, 1 };
+    const int* BLACK  = new int[3] { 0, 0, 0 };
+    const int* BLUE   = new int[3] { 0, 0, 1 };
+    const int* GREEN  = new int[3] { 0, 1, 0 };
+    const int* CYAN   = new int[3] { 0, 1, 1 };
+    const int* RED    = new int[3] { 1, 0, 0 };
+    const int* PURPLE = new int[3] { 1, 0, 1 };
+    const int* YELLOW = new int[3] { 1, 1, 0 };
+    const int* WHITE  = new int[3] { 1, 1, 1 };
 };

@@ -53,6 +53,31 @@ class Image {
             return pixels[y][x];
         }
 
+        void drawLine(Line line, const int* color) {
+            // Pick the optimal slope. If it's basically horizontal, we want to draw
+            // from the left to right. If it's basically vertical, we want to draw
+            // from the top to bottom.
+            Point start, end;
+            
+            // slope = -a/b; |a/b| > 1; |a|>|b|
+            if (abs(line.getA()) > abs(line.getB())) {
+                // ax + by = c
+                // at y = 0, x = c / a
+                // at y = height, ax + bh = c, and x = (c - bh) / a
+                start = Point(line.getC() / line.getA(), 0);
+                end = Point((line.getC() - line.getB() * height) / line.getA(), height);
+            } else {
+                // ax + by = c
+                // at x = 0, y = c / b
+                // at x = width, aw + by = c, and y = (c - aw) / b
+                start = Point(0, line.getC() / line.getB());
+                end = Point(width, (line.getC() - line.getA() * width) / line.getB());
+            }
+            
+            // std::cout << "Drawing line from " << start << " to " << end << std::endl;
+            drawLineSegment(start, end, color);
+        }
+
         void drawLineSegment(Point a, Point b, const int* color) {
             int x1 = (int)a.getX();
             int y1 = (int)a.getY();
@@ -185,16 +210,16 @@ class Image {
             }
         }
 
-        void drawPolygon(Polygon polygon, const int* color, bool drawCircles = false) {
+        void drawPolygon(Polygon polygon, const int* color, int circleRadius = 0) {
             std::vector<LineSegment> sides = polygon.getSides();
 
             for (int i = 0; i < polygon.length(); i++) {
                 drawLineSegment(polygon.getSide(i), color);
             }
 
-            if (drawCircles) {
+            if (circleRadius) {
                 for (int i = 0; i < polygon.length(); i++) {
-                    drawCircle(Circle(polygon.getPoint(i), 2), color);
+                    drawCircle(Circle(polygon.getPoint(i), circleRadius), color);
                 }
             }
         }

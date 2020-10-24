@@ -54,11 +54,11 @@ class Point {
             return Point(x * scalar, y * scalar);
         }
 
-        double getX() {
+        double getX() const {
             return x;
         }
 
-        double getY() {
+        double getY() const {
             return y;
         }
 };
@@ -78,6 +78,10 @@ class Line {
             this -> b = b;
             this -> c = c;
         }
+
+        double getA() const { return a; }
+        double getB() const { return b; }
+        double getC() const { return c; }
 
         double getSlope() {
             return -a / b;
@@ -146,11 +150,35 @@ class Line {
         }
 
         static Line fromPoints(Point a, Point b) {
-           double slopeNumer, slopeDenom;
-           slopeNumer = b.getY() - a.getY();
-           slopeDenom = b.getX() - a.getX();
+            
+            /*
+            equations are ax + by = c
+            how to find a, b, and c?
+            y = mx + b
+            m = slope_numer/slope_denom
+            y = slope_numer/slope_denom * x + b
+            slope_denom(y) = slope_numer(x) + b
+            -slope_numer(x) + slope_denom(y) = b
+            now, substitute a point for (x, y) to find b. we can just use (x1, y1)
+            b = -slope_numer(x1) + slope_denom(y1)
+            now, we know that in ax + by = c:
+            a = -slope_numer
+            b = slope_denom
+            c = a(x1) + b(y1)
+            */
+            double slopeNumer, slopeDenom;
+            slopeNumer = b.getY() - a.getY();
+            slopeDenom = b.getX() - a.getX();
 
-           return Line(-slopeNumer, slopeDenom, slopeNumer * a.getX() + slopeDenom * a.getY());
+            double newA = -slopeNumer;
+            double newB = slopeDenom;
+            double newC = newA * (a.getX()) + newB * (a.getY());
+
+            return Line(newA, newB, newC);
+        }
+
+        Line operator*(double scalar) {
+            return Line(a, b, c * scalar);
         }
 };
 
@@ -169,15 +197,15 @@ class LineSegment {
             this -> b = Point(x2, y2);
         }
 
-        double length() {
+        double length() const {
             return Point::distance(a, b);
         }
 
-        double slope() {
+        double slope() const {
             return (b.getY() - a.getY()) / (b.getX() - a.getX());
         }
 
-        bool pointAbove(Point p) {
+        bool pointAbove(Point p) const {
             // vertical line must intersect
             // first, finds the slope of the line
             if (!between(a.getX(), b.getX(), p.getX())) {
@@ -198,39 +226,31 @@ class LineSegment {
         }
 
         Line getLine() {
-            /*
-            equations are ax + by = c
-            how to find a, b, and c?
-            y = mx + b
-            m = slope_numer/slope_denom
-            y = slope_numer/slope_denom * x + b
-            slope_denom(y) = slope_numer(x) + b
-            -slope_numer(x) + slope_denom(y) = b
-            now, substitute a point for (x, y) to find b. we can just use (x1, y1)
-            b = -slope_numer(x1) + slope_denom(y1)
-            now, we know that in ax + by = c:
-            a = -slope_numer
-            b = slope_denom
-            c = -a(x1) + b(y1)
-            */
-
-           double slopeNumer, slopeDenom;
-           slopeNumer = b.getY() - a.getY();
-           slopeDenom = b.getX() - a.getX();
-
-           return Line(-slopeNumer, slopeDenom, slopeNumer * a.getX() + slopeDenom * a.getY());
+            return Line::fromPoints(a, b);
         }
 
         LineSegment rotateClockwiseAroundA() {
-            Point offset = a - b;
+            Point offset = b - a;
             Point newOffset = Point(offset.getY(), -offset.getX());
-            return LineSegment(a, b + newOffset);
+            return LineSegment(a, a + newOffset);
         }
 
         LineSegment rotateClockwiseAroundB() {
-            Point offset = b - a;
+            Point offset = a - b;
             Point newOffset = Point(offset.getY(), -offset.getX());
-            return LineSegment(a + newOffset, b);
+            return LineSegment(b + newOffset, b);
+        }
+
+        LineSegment rotateCounterClockwiseAroundA() {
+            Point offset = b - a;
+            Point newOffset = Point(-offset.getY(), offset.getX());
+            return LineSegment(a, a + newOffset);
+        }
+
+        LineSegment rotateCounterClockwiseAroundB() {
+            Point offset = a - b;
+            Point newOffset = Point(-offset.getY(), offset.getX());
+            return LineSegment(b + newOffset, b);
         }
 
         LineSegment operator+(Point p) {
@@ -241,11 +261,15 @@ class LineSegment {
             return LineSegment(a - p, b - p);
         }
 
-        Point getA() {
+        LineSegment operator*(double scalar) {
+            return LineSegment(a * scalar, b * scalar);
+        }
+
+        Point getA() const {
             return a;
         }
 
-        Point getB() {
+        Point getB() const {
             return b;
         }
 };
@@ -262,23 +286,23 @@ class Polygon {
             }
         }
 
-        Point getPoint(int point) {
+        Point getPoint(int point) const {
             return points.at(point);
         }
 
-        LineSegment getSide(int side) {
+        LineSegment getSide(int side) const {
             return sides.at(side);
         }
 
-        std::vector<Point> getPoints() {
+        std::vector<Point> getPoints() const {
             return points;
         }
 
-        std::vector<LineSegment> getSides() {
+        std::vector<LineSegment> getSides() const {
             return sides;
         }
 
-        bool containsPoint(Point p) {
+        bool containsPoint(Point p) const {
             int count = 0;
             for (int i = 0; i < (sides.size() - 1); i++) {
                 if (sides.at(i).pointAbove(p)) {
@@ -289,7 +313,7 @@ class Polygon {
             return (count % 2) != 0;
         }
 
-        bool isConvex() {
+        bool isConvex() const {
             for (int checkPointIndex = 0; checkPointIndex < 4; checkPointIndex++) {
                 std::vector<Point> otherPoints;
                 Point checkPoint = points.at(checkPointIndex);
@@ -320,13 +344,21 @@ class Polygon {
             }
         }
 
-                /**
-         * Guaranteed to generate in clockwise order
-         * 1) Generates angles in clockwise order
+        static Polygon getRandomPolygon(int nsides) {
+            std::vector<Point> points;
+            for (int i = 0; i < nsides; i++) {
+                points.push_back(Point(getRandom(), getRandom()));
+            }
+            return Polygon(points);
+        }
+
+        /**
+         * Guaranteed to generate in counterclockwise order
+         * 1) Generates angles in counterclockwise order
          * 2) Generates magnitudes randomly
          * 3) Generates points based on angles and magnitudes
          */
-        static Polygon getRandomPolygon(int nsides) {
+        static Polygon getRandomPolygonCounterclockwise(int nsides) {
             double* slices = new double[nsides];
             double sum = 0;
             double circleRads = 6.28318531;
@@ -370,27 +402,21 @@ class Polygon {
             return Polygon(points);
         }
 
-        void save(const char* filename) {
-            FILE* fptr = fopen(filename, "w");
-            for (int i = 0; i < points.size(); i++) {
-                printPoint(fptr, points.at(i));
-                if (i < points.size() - 1) {
-                    fprintf(fptr, " , ");
-                }
-            }
-        }
-
         static Polygon fromFile(const char* filename, int nsides) {
             std::ifstream file(filename);
             std::vector<Point> points;
             for (int i = 0; i < nsides; i++) {
                 double x, y;
-                file.ignore(1);
+                file.ignore(1); // '('
                 file >> x;
-                file.ignore(1);
+                file.ignore(1); // ','
                 file >> y;
-                file.ignore(4);
-                printf("Found point (%.4f, %.4f)\n", x, y);
+                file.ignore(1); // ')'
+
+                if (i < nsides - 1) {
+                    file.ignore(3); // ' , '
+                }
+
                 points.push_back(Point(x, y));
             }
 
@@ -399,8 +425,16 @@ class Polygon {
             return Polygon(points);
         }
 
-        int length() {
+        int length() const {
             return points.size();
+        }
+
+        double perimeter() const {
+            double acc = 0;
+            for (auto it : sides) {
+                acc += it.length();
+            }
+            return acc;
         }
 
         Polygon operator*(double scalar) {
@@ -423,11 +457,11 @@ class Circle {
             this -> radius = radius;
         }
 
-        double getRadius() {
+        double getRadius() const {
             return this -> radius;
         }
 
-        Point getCenter() {
+        Point getCenter() const {
             return this -> center;
         }
 
@@ -435,5 +469,41 @@ class Circle {
             return Circle(center * scalar, radius * scalar);
         }
 };
+
+// CUSTOM OUTPUT METHODS
+// POINT
+std::ostream& operator<<(std::ostream &stream, const Point &point) {
+    return stream << "(" << point.getX() << "," << point.getY() << ")";
+}
+
+// LINE
+std::ostream& operator<<(std::ostream &stream, const Line &line) {
+    return stream << "<" << line.getA() << ", " << line.getB() << ", " << line.getC() << ">";
+}
+
+// LINE SEGMENT
+std::ostream& operator<<(std::ostream &stream, const LineSegment &lineSegment) {
+    return stream << "<" << lineSegment.getA() << ", " << lineSegment.getB() << ">";
+}
+
+// POLYGON
+std::ostream& operator<<(std::ostream &stream, const Polygon &polygon) {
+    std::vector<Point> points = polygon.getPoints();
+    for (int i = 0; i < polygon.length(); i++) {
+        stream << points.at(i);
+        if (i < polygon.length() - 1) {
+            stream << " , ";
+        }
+    }
+
+    return stream;
+}
+
+// CIRCLE
+
+std::ostream& operator<<(std::ostream &stream, const Circle &circle) {
+    stream << "Circle" << circle.getCenter() << " r=" << circle.getRadius();
+    return stream;
+}
 
 #endif

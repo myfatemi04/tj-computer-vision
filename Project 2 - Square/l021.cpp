@@ -2,18 +2,72 @@
 #include<fstream>
 #include<time.h>
 #include<math.h>
+#include<vector>
 #include "geometry.cpp"
 #include "image.cpp"
+#include "color.cpp"
 
 using namespace std;
 
 void part2() {
-    // Quadrilateral myQuad = Quadrilateral::fromFile("points.txt");
-    // int white[3] = {1, 1, 1};
-    // Image outputImage(800, 800, 3, white);
+    Polygon myQuad = Polygon::generateConvex(4);
+    // Polygon myQuad = Polygon::fromFile("points.txt", 4);
+    int width = 200;
+    Image outputImage(width, width, 3, Colors::WHITE);
 
-    // Create all possible squares
+    /*
+           B
+    A--__ |
+         X--C
+     D   |
+         E
 
+    1) Drop a line BE perpendicular to AC such that BE = AC
+    */
+    Point A = myQuad.getPoint(0);
+    Point B = myQuad.getPoint(1);
+    Point C = myQuad.getPoint(2);
+    Point D = myQuad.getPoint(3);
+    LineSegment AC = LineSegment(A, C);
+    LineSegment BE = AC.rotateClockwiseAroundA() + (B - A);
+    Point E = BE.getB();
+
+    outputImage.drawLineSegment(AC * width, Colors::BLUE);
+    outputImage.drawLineSegment(BE * width, Colors::GREEN);
+
+    Line sideDE = Line::fromPoints(D, E);
+    Line sideA = sideDE.getPerpendicular().through(A);
+    Line sideC = sideDE.getPerpendicular().through(C);
+    Line sideB = sideDE.through(B);
+
+    std::vector<Point> squarePoints;
+    squarePoints.push_back(sideA.intersection(sideB));
+    squarePoints.push_back(sideB.intersection(sideC));
+    squarePoints.push_back(sideC.intersection(sideDE));
+    squarePoints.push_back(sideDE.intersection(sideA));
+
+    std::vector<Line> squareLines;
+
+    for (int i = 0; i < 4; i++) {
+        Point a = squarePoints.at(i);
+        Point b = squarePoints.at((i + 1) % 4);
+        squareLines.push_back(LineSegment(a, b).getLine());
+        outputImage.drawCircle(Circle(a * width, 2), Colors::RED);
+        outputImage.drawLine(LineSegment(a * width, b * width).getLine(), Colors::RED);
+        // outputImage.drawLineSegment(a * width, b * width, Colors::RED);
+        cout << a.getX() << ", " << a.getY() << "\n";
+    }
+
+    Polygon square(squarePoints);
+
+    // Draw the quadrilateral
+    outputImage.drawPolygon(myQuad * width, Colors::BLACK, true);
+    
+    ofstream outfile("output.ppm");
+
+    outputImage.saveImage(outfile);
+
+    outfile.close();
     
     // Display all 4 points of the quad by creating a circle with radius=2
     // Draw square with the minimum area
@@ -28,11 +82,14 @@ void part2() {
     */
 }
 
+void part1() {
+    Polygon myConvexQuad = Polygon::generateConvex(4);
+    myConvexQuad.save("points.txt");
+}
+
 int main() {
     srand(time(nullptr));
 
-    // Quadrilateral q = Quadrilateral::fromFile("points.txt");
-    // q.save("points_copy.txt");
-    Quadrilateral myConvexQuad = Quadrilateral::generateConvex();
-    myConvexQuad.save("points.txt");
+    // part1();
+    part2();
 }
