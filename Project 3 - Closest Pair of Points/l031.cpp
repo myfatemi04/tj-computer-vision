@@ -29,7 +29,7 @@ void savePoints(std::ostream& out, std::list<Point> points) {
   }
 }
 
-int main() {
+void part1() {
   std::list<Point> points = generatePoints(50);
   std::ofstream outPoints("points.txt");
   std::ofstream outImage("points.ppm");
@@ -57,4 +57,8 @@ int main() {
   image.drawPointCircle(*p2 * 800, new int[3] {1, 0, 0});
   image.saveImage(outImage);
   outImage.close();
+}
+
+int main() {
+  part1();
 }
