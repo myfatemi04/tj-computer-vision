@@ -219,9 +219,13 @@ class Image {
 
             if (circleRadius) {
                 for (int i = 0; i < polygon.length(); i++) {
-                    drawCircle(Circle(polygon.getPoint(i), circleRadius), color);
+                    drawPointCircle(polygon.getPoint(i), circleRadius, color);
                 }
             }
+        }
+
+        void drawPointCircle(Point point, int circleRadius, const int* color) {
+            drawCircle(Circle(point, circleRadius), color);
         }
 
         void saveImage(std::ostream& out) {

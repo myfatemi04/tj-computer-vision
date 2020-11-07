@@ -38,6 +38,15 @@
         "xutility": "cpp",
         "vector": "cpp",
         "list": "cpp",
-        "iomanip": "cpp"
+        "iomanip": "cpp",
+        "algorithm": "cpp",
+        "atomic": "cpp",
+        "compare": "cpp",
+        "ctime": "cpp",
+        "iterator": "cpp",
+        "xlocmon": "cpp",
+        "xloctime": "cpp",
+        "chrono": "cpp",
+        "ratio": "cpp"
     }
 }
