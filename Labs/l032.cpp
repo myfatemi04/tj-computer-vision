@@ -125,7 +125,7 @@ bool comparePointXValues(const Point& first, const Point& second) {
  */
 PointPair helper(std::vector<Point>& points, int begin, int end) {
   int numPoints = (end - begin);
-  int mid = (begin + end) / 2;
+  int mid = (begin + end) >> 1;
   if (numPoints == 2) {
     return PointPair(points.at(begin), points.at(end - 1));
   } else if (numPoints == 3) {
@@ -149,7 +149,7 @@ PointPair helper(std::vector<Point>& points, int begin, int end) {
 
     // Maybe one of the points is on the left side and one is on the right?
     // Make a 'strip' of points down the middle
-    int stripLeft, stripRight;
+    int stripLeft = mid - 1, stripRight = mid;
     double middleX = points.at(mid).getX();
 
     // [begin, mid) = left side
