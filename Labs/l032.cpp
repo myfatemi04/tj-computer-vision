@@ -5,9 +5,6 @@
 #include "geometry.cpp"
 #include "image.cpp"
 
-/// NUMBER OF POINTS TO USE
-int npoints = 50;
-
 /**
  * A class that stores a pair of points and their distance.
  * Includes a method to find the minimum and replace the points
@@ -50,13 +47,29 @@ std::ostream& operator<<(std::ostream& s, const PointPair& p) {
 }
 
 /**
- * General method to read `npoints` points from the input stream `in`.
+ * General method to save a vector of points to points.txt
  */
-std::vector<Point> readPoints(std::istream& in, int npoints) {
+void savePoints(std::vector<Point>& points) {
+  std::ofstream out("points.txt");
+  
+  // makes all numbers write with exactly 17 digits after the decimal point
+  out << std::fixed << std::setprecision(17);
+  for (auto it = points.begin(); it != points.end(); it++) {
+    out << it->getX() << "  " << it->getY() << "\n";
+  }
+
+  out.close();
+}
+
+/**
+ * General method to read from points.txt until the end of the file
+ */
+std::vector<Point> readPoints() {
+  std::ifstream in("points.txt");
   std::vector<Point> points;
-  for (int i = 0; i < npoints; i++) {
-    double x, y;
-    in >> x >> y;
+  double x, y;
+  while (in >> x) {
+    in >> y;
     points.push_back(Point(x, y));
   }
   return points;
@@ -73,29 +86,6 @@ std::vector<Point> generatePoints(int npoints) {
   return points;
 }
 
-/**
- * General method to save a vector of points to an output stream.
- */
-void savePoints(std::ostream& out, std::vector<Point> points) {
-  // makes all numbers write with exactly 17 digits after the decimal point
-  out << std::fixed << std::setprecision(17);
-  for (auto it = points.begin(); it != points.end(); it++) {
-    out << it->getX() << "  " << it->getY() << "\n";
-  }
-}
-
-void generatePoints() {
-  std::ofstream pointsFile("points.txt");
-  savePoints(pointsFile, generatePoints(npoints));
-  pointsFile.close();
-}
-
-std::vector<Point> readPoints() {
-  std::ifstream pointsFile("points.txt");
-  std::vector<Point> points = readPoints(pointsFile, npoints);
-  pointsFile.close();
-  return points;
-}
 
 PointPair part1(std::vector<Point>& points) {
   PointPair closest(points.at(0), points.at(1));
@@ -252,11 +242,18 @@ void timePart2(std::vector<Point>& points, std::ofstream& outfile) {
  */
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
-  if (argc > 1) {
-    npoints = atoi(argv[1]);
+
+  bool generate = false;
+
+  if (generate) {
+    int npoints = 10000;
+    if (argc > 1) {
+      npoints = atoi(argv[1]);
+    }
+
+    std::vector<Point> points = generatePoints(npoints);
+    savePoints(points);
   }
-  
-  // generatePoints();
 
   auto points = readPoints();
 

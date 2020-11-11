@@ -47,6 +47,8 @@
         "xlocmon": "cpp",
         "xloctime": "cpp",
         "chrono": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "cctype": "cpp",
+        "string": "cpp"
     }
 }
