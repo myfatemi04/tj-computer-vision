@@ -6,7 +6,7 @@
 #include "image.cpp"
 
 /// NUMBER OF POINTS TO USE
-int npoints = 10000;
+int npoints = 50;
 
 /**
  * A class that stores a pair of points and their distance.
@@ -256,7 +256,7 @@ int main(int argc, const char* argv[]) {
     npoints = atoi(argv[1]);
   }
   
-  generatePoints();
+  // generatePoints();
 
   auto points = readPoints();
 

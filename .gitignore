@@ -1,3 +1,2 @@
 *.ppm
-PPMViewer/build
-PPMViewer/external
+*.exe
