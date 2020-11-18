@@ -56,13 +56,18 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
     // otherwise, do the other method, as we can avoid sorting it again
     if (stripSize > 16) {
       // Create a strip sorted by y values
+      // Here, we make a vector of pointers to points in the original vector.
+      // This is so we do not lose the reference, which happens if you create
+      // the strip based on the pointers to the first and last elements
       std::vector<Point*> strip;
       for (int i = stripLeft; i < stripRight; i++) {
         strip.push_back(&points.at(i));
       }
+      // Sorts the points
       std::sort(strip.begin(), strip.end(), comparePointPointerYValues);
 
-      // For each point in the strip, compare it with the next 15 points
+      // For each point in the strip, compare it with the next points
+      // until the difference in y is greater than d
       for (int i = 0; i < stripSize; i++) {
         double maxY = strip.at(i)->getY() + d;
         for (int j = i + 1; j < stripSize && strip.at(j)->getY() < maxY; j++) {
@@ -70,11 +75,15 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
         }
       }
     } else {
-      for (int leftPoint = stripLeft; leftPoint < mid; leftPoint++) {
-        for (int rightPoint = mid; rightPoint < stripRight; rightPoint++) {
+      // For each point in the left side of the strip, compare it with
+      // a point on the right side of the strip until the difference in
+      // X is greater than d.
+      for (int i = stripLeft; i < mid; i++) {
+        double maxX = points.at(i).getX() + d;
+        for (int j = mid; j < stripRight && points.at(j).getX() < maxX; j++) {
           closest.minify({
-            points.at(leftPoint),
-            points.at(rightPoint)
+            points.at(i),
+            points.at(j)
           });
         }
       }

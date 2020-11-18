@@ -52,7 +52,9 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
       stripRight++;
     }
 
-    // Brute force the strip
+    // For each point in the left side of the strip, compare it with
+    // a point on the right side of the strip until the difference in
+    // X is greater than d.
     for (int i = stripLeft; i < mid; i++) {
       double maxX = points.at(i).getX() + d;
       for (int j = mid; j < stripRight && points.at(j).getX() < maxX; j++) {
