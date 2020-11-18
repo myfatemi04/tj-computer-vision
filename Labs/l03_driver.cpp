@@ -14,11 +14,21 @@
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
 
+	// array of booleans: whether or not to test out each part
+	// if parts[2] is true, it will test the lab 3 part 2 code.
+	// you can test out multiple parts.
 	bool parts[] = {false, false, false, false};
+
+	// how many cycles to run when timing the parts
 	int cycles = 10;
-	int npointsToGenerate = 0; // if 0, don't generate any
+
+	// if n > 0, generates n points and stores them in a file
+	int npointsToGenerate = 0;
+
+	// the file to store the generated points to and read from
 	const char* file = "points.txt";
 
+	// if no arguments are present, print out a help message
 	if (argc == 1) {
 		const char* help = 
 "Usage: l03_driver gN p123 cN iFile\n"
@@ -31,9 +41,13 @@ int main(int argc, const char* argv[]) {
 		return 0;
 	}
 
+	// read options from the args
 	for (int i = 1; i < argc; i++) {
+		// 'g' to generate N points
 		if (argv[i][0] == 'g') {
 			npointsToGenerate = atoi(argv[i] + 1);
+
+		// 'p' to specify which parts to run
 		} else if (argv[i][0] == 'p') {
 			const char* p = argv[i];
 			while (*p != '\0') {
@@ -46,8 +60,12 @@ int main(int argc, const char* argv[]) {
 				}
 				p++;
 			}
+
+		// 'c' to specify how many cycles to run
 		} else if (argv[i][0] == 'c') {
 			cycles = atoi(argv[i] + 1);
+
+		// 'f' to specify the input file
 		} else if (argv[i][0] == 'f') {
 			file = argv[i] + 1;
 		}
@@ -56,6 +74,7 @@ int main(int argc, const char* argv[]) {
 	if (npointsToGenerate > 0) {
 		std::vector<Point> points = generatePoints(npointsToGenerate);
 		savePoints(points, file);
+		std::cout << "Generated " << npointsToGenerate << " points" << std::endl;
 	}
 
   auto points = readPoints(file);
