@@ -60,7 +60,7 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
     for (int thisPoint = 0; thisPoint < stripSize; thisPoint++) {
       for (
         int thatPoint = thisPoint + 1;
-        (thatPoint < thisPoint + 8) && (thatPoint < stripSize);
+        (thatPoint < thisPoint + 15) && (thatPoint < stripSize);
         thatPoint++
       ) {
         closest.minify({
