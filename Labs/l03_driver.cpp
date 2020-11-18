@@ -19,12 +19,14 @@ int main(int argc, const char* argv[]) {
 	const char* file = "points.txt";
 
 	if (argc == 1) {
-		std::cout << "Usage: l03_driver gN p123 cN iFile\n";
-		std::cout << "    gN: Generate N points\n";
-		std::cout << "    p123: Time part 1, 2, and/or 3. Can do p1, p23, etc.\n";
-		std::cout << "    cN: Cycle N times for the timer.\n";
-		std::cout << "    iFile: Use the file File for generating/reading points.\n";
-		std::cout << "           Defaults to \"points.txt\".\n";
+		const char* help = 
+"Usage: l03_driver gN p123 cN iFile\n"
+"    gN: Generate N points\n"
+"    p123: Time part 1, 2, and/or 3. Can do p1, p23, etc.\n"
+"    cN: Cycle N times for the timer.\n"
+"    fFile: Use the file File for generating/reading points.\n"
+"           Defaults to \"points.txt\".\n";
+		std::cout << help;
 		return 0;
 	}
 
@@ -47,14 +49,15 @@ int main(int argc, const char* argv[]) {
 			}
 		} else if (argv[i][0] == 'c') {
 			cycles = atoi(argv[i] + 1);
-		} else if (argv[i][0] == 'i') {
+		} else if (argv[i][0] == 'f') {
 			file = argv[i] + 1;
 		}
 	}
 
-  auto points = readPoints();
+  auto points = readPoints(file);
 
   std::ofstream outfile("results.txt");
+	std::cout << std::setprecision(17);
 	std::cout << "Found " << points.size() << " points\n";
 	outfile << "Found " << points.size() << " points\n";
 	if (parts[1]) {

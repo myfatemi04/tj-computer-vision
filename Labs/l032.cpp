@@ -1,7 +1,5 @@
 #include <algorithm>
-#include <iomanip>
 #include <vector>
-#include <cstring>
 #include "l03core.cpp"
 #include "geometry.cpp"
 

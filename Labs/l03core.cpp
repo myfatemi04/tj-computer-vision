@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <sstream>
 #include <vector>
 #include "geometry.cpp"
 
@@ -134,13 +135,17 @@ void timer(
   auto elapsed = getMillis() - start;
   auto percycle = elapsed / count;
 
-  std::cout << methodName << " x [" << count << "] ";
-  std::cout << elapsed << "ms (" << percycle << "/cycle)\n";
-  std::cout << closest << std::endl;
+  // write to a stringstream so we can write the same
+  // output to two other streams
+  std::stringstream out;
 
-  outfile << methodName << " x [" << count << "] ";
-  outfile << elapsed << "ms (" << percycle << "/cycle)\n";
-  outfile << closest << std::endl;
+	out << std::setprecision(17);
+  out << methodName << " x [" << count << "] ";
+  out << elapsed << "ms (" << percycle << "/cycle)\n";
+  out << closest << std::endl;
+
+  std::cout << out.str();
+	outfile << out.str();
 }
 
 #endif

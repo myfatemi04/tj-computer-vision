@@ -63,7 +63,10 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
         (thatPoint < thisPoint + 8) && (thatPoint < stripSize);
         thatPoint++
       ) {
-        closest.minify({strip.at(thisPoint), strip.at(thatPoint)});
+        closest.minify({
+          points.at(stripLeft + thisPoint),
+          points.at(stripLeft + thatPoint)
+        });
       }
     }
 
@@ -101,10 +104,10 @@ int main(int argc, const char* argv[]) {
     savePoints(points);
   }
 
-  auto points = readPoints();
+  auto points = readPoints("points1k.txt");
 
   std::ofstream outfile("results.txt");
-  timer(points, outfile, part3, "Recursive Optimized", 10);
+  timer(points, outfile, part3, "Recursive Optimized", 1);
   outfile.close();
 }
 
