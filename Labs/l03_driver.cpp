@@ -16,6 +16,7 @@ int main(int argc, const char* argv[]) {
 
 	bool parts[] = {false, false, false, false};
 	int cycles = 10;
+	int npointsToGenerate = 0; // if 0, don't generate any
 	const char* file = "points.txt";
 
 	if (argc == 1) {
@@ -32,9 +33,7 @@ int main(int argc, const char* argv[]) {
 
 	for (int i = 1; i < argc; i++) {
 		if (argv[i][0] == 'g') {
-			int npoints = atoi(argv[i] + 1);
-			std::vector<Point> points = generatePoints(npoints);
-			savePoints(points);
+			npointsToGenerate = atoi(argv[i] + 1);
 		} else if (argv[i][0] == 'p') {
 			const char* p = argv[i];
 			while (*p != '\0') {
@@ -52,6 +51,11 @@ int main(int argc, const char* argv[]) {
 		} else if (argv[i][0] == 'f') {
 			file = argv[i] + 1;
 		}
+	}
+
+	if (npointsToGenerate > 0) {
+		std::vector<Point> points = generatePoints(npointsToGenerate);
+		savePoints(points, file);
 	}
 
   auto points = readPoints(file);
