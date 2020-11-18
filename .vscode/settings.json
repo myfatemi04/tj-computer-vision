@@ -49,6 +49,7 @@
         "chrono": "cpp",
         "ratio": "cpp",
         "cctype": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "functional": "cpp"
     }
 }

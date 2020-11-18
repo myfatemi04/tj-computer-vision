@@ -1,18 +1,14 @@
 #include <algorithm>
-#include <iomanip>
 #include <vector>
-#include <cstring>
-#include "l03core.cpp"
 #include "geometry.cpp"
+#include "l03core.cpp"
 
 /**
- * Divide and conquer method:
- *  finds the closest pair of points with both in the first half,
- *  finds the closest pair of points with both in the second half,
- *  and checks to see if the closest pair of points is shared between
- *  the first and second halves.
+ * Improved divide and conquer method. Optimizes based on the fact
+ *  that you can make the comparisons between strips work in O(n log n)
+ *  time, which is an improvement over O(n) time.
  */
-PointPair helper2(std::vector<Point>& points, int begin, int end) {
+PointPair helper3(std::vector<Point>& points, int begin, int end) {
   int numPoints = (end - begin);
   int mid = (begin + end) >> 1;
   if (numPoints == 2) {
@@ -29,9 +25,9 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
     return res;
   } else {
     // Right side
-    PointPair min1 = helper2(points, begin, mid);
+    PointPair min1 = helper3(points, begin, mid);
     // Left side
-    PointPair min2 = helper2(points, mid, end);
+    PointPair min2 = helper3(points, mid, end);
     // Closest pair where both are in left, or both are in right
     PointPair closest = min1;
     closest.minify(min2);
@@ -54,13 +50,20 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
       stripRight++;
     }
 
-    // Brute force the strip
-    for (int leftPoint = stripLeft; leftPoint < mid; leftPoint++) {
-      for (int rightPoint = mid; rightPoint < stripRight; rightPoint++) {
-        closest.minify({
-          points.at(leftPoint),
-          points.at(rightPoint)
-        });
+    int stripSize = stripRight - stripLeft;
+
+    // Create a strip sorted by y values
+    std::vector<Point> strip(points.begin() + stripLeft, points.begin() + stripRight);
+    std::sort(strip.begin(), strip.end(), comparePointYValues);
+
+    // For each point in the strip, compare it with the next 15 points
+    for (int thisPoint = 0; thisPoint < stripSize; thisPoint++) {
+      for (
+        int thatPoint = thisPoint + 1;
+        (thatPoint < thisPoint + 8) && (thatPoint < stripSize);
+        thatPoint++
+      ) {
+        closest.minify({strip.at(thisPoint), strip.at(thatPoint)});
       }
     }
 
@@ -71,14 +74,14 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
 /**
  * Driver method for the Divide and conquer method:
  *  sorts the input vector, calls the helper method with the
- *  appropriate values
+ *  appropriate values. Optimized to only check the next 15 points.
  */
-PointPair part2(std::vector<Point>& points) {
+PointPair part3(std::vector<Point>& points) {
   // First, sort the points by X value
   std::sort(points.begin(), points.end(), comparePointXValues);
 
   // Now, divide-and-conquer
-  return helper2(points, 0, points.size());
+  return helper3(points, 0, points.size());
 }
 
 #ifndef LAB_03_MAIN
@@ -94,15 +97,14 @@ int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
 
   if (argc > 1) {
-    int npoints = atoi(argv[1]);
-    std::vector<Point> points = generatePoints(npoints);
+    std::vector<Point> points = generatePoints(atoi(argv[1]));
     savePoints(points);
   }
 
   auto points = readPoints();
 
   std::ofstream outfile("results.txt");
-  timer(points, outfile, part2, "Recursive", 10);
+  timer(points, outfile, part3, "Recursive Optimized", 10);
   outfile.close();
 }
 
