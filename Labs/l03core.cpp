@@ -102,6 +102,13 @@ bool comparePointYValues(const Point& first, const Point& second) {
   return first.getY() < second.getY();
 }
 
+/**
+ * Method to use when sorting points by Y value
+ */
+bool comparePointPointerYValues(const Point* first, const Point* second) {
+  return first->getY() < second->getY();
+}
+
 #include <chrono>
 /**
  * Uses the `chrono` module to get the system time in milliseconds.

@@ -29,13 +29,13 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
     // Left side
     PointPair min2 = helper3(points, mid, end);
     // Closest pair where both are in left, or both are in right
-    PointPair closest = min1;
-    closest.minify(min2);
+    PointPair closest = min1; closest.minify(min2);
     double d = closest.getDistance();
 
     // Maybe one of the points is on the left side and one is on the right?
     // Make a 'strip' of points down the middle
-    int stripLeft = mid, stripRight = mid;
+    int stripLeft = mid;
+    int stripRight = mid;
     double middleX = points.at(mid).getX();
     double minX = middleX - d;
     double maxX = middleX + d;
@@ -52,23 +52,34 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
 
     int stripSize = stripRight - stripLeft;
 
-    // Create a strip sorted by y values
-    std::vector<Point> strip(points.begin() + stripLeft, points.begin() + stripRight);
-    std::sort(strip.begin(), strip.end(), comparePointYValues);
+    // no point in sorting if you're checking the next 16 points anyway
+    // otherwise, do the other method, as we can avoid sorting it again
+    if (stripSize > 16) {
+      // Create a strip sorted by y values
+      std::vector<Point*> strip;
+      for (int i = stripLeft; i < stripRight; i++) {
+        strip.push_back(&points.at(i));
+      }
+      std::sort(strip.begin(), strip.end(), comparePointPointerYValues);
 
-    // For each point in the strip, compare it with the next 15 points
-    for (int thisPoint = 0; thisPoint < stripSize; thisPoint++) {
-      for (
-        int thatPoint = thisPoint + 1;
-        (thatPoint < thisPoint + 15) && (thatPoint < stripSize);
-        thatPoint++
-      ) {
-        closest.minify({
-          points.at(stripLeft + thisPoint),
-          points.at(stripLeft + thatPoint)
-        });
+      // For each point in the strip, compare it with the next 15 points
+      for (int i = 0; i < stripSize; i++) {
+        double maxY = strip.at(i)->getY() + d;
+        for (int j = i + 1; j < stripSize && strip.at(j)->getY() < maxY; j++) {
+          closest.minify({*strip.at(i), *strip.at(j)});
+        }
+      }
+    } else {
+      for (int leftPoint = stripLeft; leftPoint < mid; leftPoint++) {
+        for (int rightPoint = mid; rightPoint < stripRight; rightPoint++) {
+          closest.minify({
+            points.at(leftPoint),
+            points.at(rightPoint)
+          });
+        }
       }
     }
+
 
     return closest;
   }

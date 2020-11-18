@@ -53,11 +53,12 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
     }
 
     // Brute force the strip
-    for (int leftPoint = stripLeft; leftPoint < mid; leftPoint++) {
-      for (int rightPoint = mid; rightPoint < stripRight; rightPoint++) {
+    for (int i = stripLeft; i < mid; i++) {
+      double maxX = points.at(i).getX() + d;
+      for (int j = mid; j < stripRight && points.at(j).getX() < maxX; j++) {
         closest.minify({
-          points.at(leftPoint),
-          points.at(rightPoint)
+          points.at(i),
+          points.at(j)
         });
       }
     }
