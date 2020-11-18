@@ -1,3 +1,7 @@
+#ifndef LAB_PART
+#define LAB_PART 3
+#endif
+
 #include <algorithm>
 #include <vector>
 #include "l03core.cpp"
@@ -82,8 +86,7 @@ PointPair part2(std::vector<Point>& points) {
   return helper2(points, 0, points.size());
 }
 
-#ifndef LAB_03_MAIN
-#define LAB_03_MAIN
+#if LAB_PART == 2
 
 /**
  * Main method. Sets the random seed to the current time.

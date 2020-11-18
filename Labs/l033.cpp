@@ -1,7 +1,12 @@
+#ifndef LAB_PART
+#define LAB_PART 3
+#endif
+
 #include <algorithm>
 #include <vector>
 #include "geometry.cpp"
 #include "l03core.cpp"
+#include "l032.cpp"
 
 /**
  * Improved divide and conquer method. Optimizes based on the fact
@@ -68,10 +73,10 @@ PointPair helper3(std::vector<Point>& points, int begin, int end) {
 
       // For each point in the strip, compare it with the next points
       // until the difference in y is greater than d
-      for (int i = 0; i < stripSize; i++) {
-        double maxY = strip.at(i)->getY() + d;
-        for (int j = i + 1; j < stripSize && strip.at(j)->getY() < maxY; j++) {
-          closest.minify({*strip.at(i), *strip.at(j)});
+      for (auto i = strip.begin(); i != strip.end(); i++) {
+        double maxY = (*i)->getY() + d;
+        for (auto j = std::next(i); j != strip.end() && (*j)->getY() < maxY; j++) {
+          closest.minify({**i, **j});
         }
       }
     } else {
@@ -107,8 +112,7 @@ PointPair part3(std::vector<Point>& points) {
   return helper3(points, 0, points.size());
 }
 
-#ifndef LAB_03_MAIN
-#define LAB_03_MAIN
+#if LAB_PART == 3
 
 /**
  * Main method. Sets the random seed to the current time.
@@ -124,9 +128,10 @@ int main(int argc, const char* argv[]) {
     savePoints(points);
   }
 
-  auto points = readPoints("points1k.txt");
+  auto points = readPoints("points100k.txt");
 
   std::ofstream outfile("results.txt");
+  timer(points, outfile, part2, "Recursive", 1);
   timer(points, outfile, part3, "Recursive Optimized", 1);
   outfile.close();
 }

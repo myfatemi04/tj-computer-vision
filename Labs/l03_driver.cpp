@@ -1,4 +1,6 @@
-#define LAB_03_MAIN
+#ifndef LAB_PART
+#define LAB_PART -1
+#endif
 
 #include "l03core.cpp"
 #include "l031.cpp"

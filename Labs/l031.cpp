@@ -1,3 +1,7 @@
+#ifndef LAB_PART
+#define LAB_PART 1
+#endif
+
 #include<iomanip>
 #include<list>
 #include "geometry.cpp"
@@ -16,9 +20,7 @@ PointPair part1(std::vector<Point>& points) {
   return closest;
 }
 
-#ifndef LAB_03_MAIN
-#define LAB_03_MAIN
-
+#if LAB_PART == 1
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
 
