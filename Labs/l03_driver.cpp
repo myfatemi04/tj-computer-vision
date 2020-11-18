@@ -24,7 +24,7 @@ int main(int argc, const char* argv[]) {
 "Usage: l03_driver gN p123 cN iFile\n"
 "    gN: Generate N points\n"
 "    p123: Time part 1, 2, and/or 3. Can do p1, p23, etc.\n"
-"    cN: Cycle N times for the timer.\n"
+"    cN: Cycle N times for the timer. Defaults to 10 cycles.\n"
 "    fFile: Use the file File for generating/reading points.\n"
 "           Defaults to \"points.txt\".\n";
 		std::cout << help;
