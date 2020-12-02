@@ -16,11 +16,11 @@
  */
 class PointPair {
   private:
-    Point *a, *b;
+    const Point *a, *b;
     double distance;
 
   public:
-    PointPair(Point& a, Point& b): a(&a), b(&b) {
+    PointPair(const Point& a, const Point& b): a(&a), b(&b) {
       distance = Point::distance(a, b);
     }
 

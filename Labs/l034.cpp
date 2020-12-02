@@ -56,12 +56,16 @@ class Grid {
 		 * Adds a point to the grid at the correct grid area.
 		 * If the point already exists returns false.
 		 */
-		bool addPoint(Point& point) {
-			GridSquare gs = this -> getGridSquare(point);
+		void addPoint(const Point& point) {
+			gridSquares.emplace(getGridSquare(point), point);
 		}
 
-		Point getPointAt(GridSquare& gridSquare) const {
-			return gridSquares.at(gridSquare);
+		Point* getPointAt(GridSquare& gridSquare) const {
+			if (this -> hasPointAt(gridSquare)) {
+				return new Point(gridSquares.at(gridSquare));
+			} else {
+				return NULL;
+			}
 		}
 		
 		bool hasPointAt(GridSquare& gridSquare) const {
@@ -71,20 +75,29 @@ class Grid {
 		/**
 		 * Looks for the closest point within the 5x5 grid of neighboring grid squares. If no points are found in those grid squares, this returns -1.
 		 */
-		PointPair* getClosestPointWithinBoundaries(Point& point) {
+		PointPair* getClosestPointWithinBoundaries(Point& point) const {
 			PointPair *closest = NULL;
 			GridSquare gridSquare = this -> getGridSquare(point);
-			for (int x = -2; x <= 2; x++) {
-				for (int y = -2; y <= 2; y++) {
+
+			// Iterate over nearest grid squares
+			int centerX = gridSquare.getX();
+			int centerY = gridSquare.getY();
+
+			for (int x = centerX - 2; x <= centerX + 2; x++) {
+				for (int y = centerY - 2; y <= centerY + 2; y++) {
 					GridSquare gridSquareToCheck = GridSquare(x, y);
-					if (this -> hasPointAt(gridSquareToCheck)) {
-						Point pointToCheck = this -> getPointAt(gridSquareToCheck);
-						double distance = Point::distance(pointToCheck, point);
-						if (closest == NULL || distance < closest -> getDistance()) {
-							if (closest) {
+					Point *pointToCheck = this -> getPointAt(gridSquareToCheck);
+
+					if (pointToCheck != NULL) {
+						double distance = Point::distance(*pointToCheck, point);
+
+						if (closest == NULL) {
+							closest = new PointPair(point, *pointToCheck);
+						} else {
+							if (distance <closest -> getDistance()) {
 								delete closest;
+								closest = new PointPair(point, *pointToCheck);
 							}
-							closest = new PointPair(point, pointToCheck);
 						}
 					}
 				}
@@ -111,20 +124,48 @@ PointPair part4(std::vector<Point>& points) {
 	Grid grid(closest.getDistance());
 	
 	for (int i = 0; i < points.size(); i++) {
-		Point p = points.at(i);
-		PointPair* closest = grid.getClosestPointWithinBoundaries(p);
-		if (closest != NULL) {
-			if (closest -> getDistance() < grid.getDelta()) {
+		Point point = points.at(i);
+		PointPair* closestHere = grid.getClosestPointWithinBoundaries(point);
+
+		if (closestHere != NULL) {
+			if (closestHere -> getDistance() < grid.getDelta()) {
+				closest = *closestHere;
+
 				grid.clear();
-				grid.setDelta(closest -> getDistance());
+				grid.setDelta(closestHere -> getDistance());
 
 				for (int j = 0; j <= i; j++) {
-					Point pointToAdd = points.at(j);
-					grid.addPoint(pointToAdd);
+					grid.addPoint(points.at(j));
 				}
+
+				continue;
 			}
 		}
+
+		grid.addPoint(point);
 	}
+
+	return closest;
+}
+
+#endif
+
+#if LAB_PART == 4
+
+int main() {
+	std::srand(time(NULL));
+
+  // if (argc > 1) {
+  //   int npoints = atoi(argv[1]);
+  //   std::vector<Point> points = generatePoints(npoints);
+  //   savePoints(points);
+  // }
+
+  auto points = readPoints();
+
+  std::ofstream outfile("results.txt");
+  timer(points, outfile, part4, "Hashing Method", 10);
+  outfile.close();
 }
 
 #endif

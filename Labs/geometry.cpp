@@ -27,40 +27,38 @@ class Point {
         double x, y;
 
     public:
-        Point(double x, double y) {
-            this -> x = x;
-            this -> y = y;
-        }
+        Point(double x, double y): x(x), y(y) {}
+
+        Point(const Point& point): x(point.x), y(point.y) {}
 
         Point() {}
 
-        static double distance(Point a, Point b) {
+        static double distance(const Point& a, const Point& b) {
             return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
         }
 
-        double magnitude() {
+        double distance(const Point& other) const {
+            return Point::distance(*this, other);
+        }
+
+        double magnitude() const {
             return sqrt(x * x + y * y);
         }
 
-        Point operator+(Point b) {
+        Point operator+(const Point& b) const {
             return Point(x + b.x, y + b.y);
         }
 
-        Point operator-(Point b) {
+        Point operator-(const Point& b) const {
             return Point(x - b.x, y - b.y);
         }
 
-        Point operator*(double scalar) {
+        Point operator*(double scalar) const {
             return Point(x * scalar, y * scalar);
         }
 
-        double getX() const {
-            return x;
-        }
-
-        double getY() const {
-            return y;
-        }
+        double getX() const { return x; }
+        double getY() const { return y; }
 };
 
 void printPoint(FILE* fptr, Point point) {
@@ -73,25 +71,28 @@ class Line {
 
     public:
         Line() {}
-        Line(double a, double b, double c) {
-            this -> a = a;
-            this -> b = b;
-            this -> c = c;
-        }
+        Line(
+            double a,
+            double b,
+            double c
+        ):
+            a(a),
+            b(b),
+            c(c) {}
 
         double getA() const { return a; }
         double getB() const { return b; }
         double getC() const { return c; }
 
-        double getSlope() {
+        double getSlope() const {
             return -a / b;
         }
 
-        double getIntercept() {
+        double getIntercept() const {
             return c / b;
         }
 
-        bool isParallel(Line other) {
+        bool isParallel(const Line& other) const {
             if (b == 0) {
                 return other.b == 0;
             } else {
@@ -103,7 +104,7 @@ class Line {
             }
         }
 
-        bool isPerpendicular(Line other) {
+        bool isPerpendicular(const Line& other) const {
             if (b == 0) {
                 return other.a == 0;
             } else {
@@ -115,7 +116,7 @@ class Line {
             }
         }
 
-        Point intersection(Line other) {
+        Point intersection(const Line& other) const {
             // matrix is:
             /*
             | a1 b1 | = | c1 |
@@ -136,12 +137,12 @@ class Line {
             return Point(detX / det, detY / det);
         }
 
-        Line through(Point p) {
+        Line through(const Point& p) const {
             double targetC = (p.getX() * a) + (p.getY() * b);
             return Line(a, b, targetC);
         }
 
-        Line getPerpendicular() {
+        Line getPerpendicular() const {
             // ax + by = c
             // by = -ax + c
             // ay = bx + c
@@ -177,7 +178,7 @@ class Line {
             return Line(newA, newB, newC);
         }
 
-        Line operator*(double scalar) {
+        Line operator*(double scalar) const {
             return Line(a, b, c * scalar);
         }
 };
@@ -187,15 +188,11 @@ class LineSegment {
         Point a, b;
 
     public:
-        LineSegment(Point a, Point b) {
-            this -> a = a;
-            this -> b = b;
-        }
+        LineSegment(Point a, Point b): a(a), b(b) {}
 
-        LineSegment(double x1, double y1, double x2, double y2) {
-            this -> a = Point(x1, y1);
-            this -> b = Point(x2, y2);
-        }
+        LineSegment(double x1, double y1, double x2, double y2):
+            a(Point(x1, y2)),
+            b(Point(x2, y2)) {}
 
         double length() const {
             return Point::distance(a, b);
@@ -225,7 +222,7 @@ class LineSegment {
             return LineSegment(a, a + offset);
         }
 
-        Line getLine() {
+        Line getLine() const {
             return Line::fromPoints(a, b);
         }
 
@@ -265,13 +262,8 @@ class LineSegment {
             return LineSegment(a * scalar, b * scalar);
         }
 
-        Point getA() const {
-            return a;
-        }
-
-        Point getB() const {
-            return b;
-        }
+        Point getA() const { return a; }
+        Point getB() const { return b; }
 };
 
 class Polygon {
