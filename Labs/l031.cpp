@@ -2,6 +2,9 @@
 #define LAB_PART 1
 #endif
 
+#ifndef LAB_L031
+#define LAB_L031
+
 #include<iomanip>
 #include<list>
 #include "geometry.cpp"
@@ -19,6 +22,8 @@ PointPair part1(std::vector<Point>& points) {
 
   return closest;
 }
+
+#endif
 
 #if LAB_PART == 1
 int main(int argc, const char* argv[]) {

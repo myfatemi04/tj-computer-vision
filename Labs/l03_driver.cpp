@@ -6,6 +6,7 @@
 #include "l031.cpp"
 #include "l032.cpp"
 #include "l033.cpp"
+#include "l034.cpp"
 
 	/**
  * Main method. Sets the random seed to the current time.
@@ -19,7 +20,7 @@ int main(int argc, const char* argv[]) {
 	// array of booleans: whether or not to test out each part
 	// if parts[2] is true, it will test the lab 3 part 2 code.
 	// you can test out multiple parts.
-	bool parts[] = {false, false, false, false};
+	bool parts[] = {false, false, false, false, false};
 
 	// how many cycles to run when timing the parts
 	int cycles = 10;
@@ -33,9 +34,9 @@ int main(int argc, const char* argv[]) {
 	// if no arguments are present, print out a help message
 	if (argc == 1) {
 		const char* help = 
-"Usage: l03_driver gN p123 cN iFile\n"
+"Usage: l03_driver gN p### cN iFile\n"
 "    gN: Generate N points\n"
-"    p123: Time part 1, 2, and/or 3. Can do p1, p23, etc.\n"
+"    p###: Time part 1, 2, 3, [etc.] Can do p1, p23, etc.\n"
 "    cN: Cycle N times for the timer. Defaults to 10 cycles.\n"
 "    fFile: Use the file File for generating/reading points.\n"
 "           Defaults to \"points.txt\".\n";
@@ -53,12 +54,8 @@ int main(int argc, const char* argv[]) {
 		} else if (argv[i][0] == 'p') {
 			const char* p = argv[i];
 			while (*p != '\0') {
-				if (*p == '1') {
-					parts[1] = true;
-				} else if (*p == '2') {
-					parts[2] = true;
-				} else if (*p == '3') {
-					parts[3] = true;
+				if (*p >= '1' && *p <= '9') {
+					parts[*p - '1' + 1] = true;
 				}
 				p++;
 			}
@@ -93,6 +90,9 @@ int main(int argc, const char* argv[]) {
 	}
 	if (parts[3]) {
 		timer(points, outfile, part3, "Recursive Optimized", cycles);
+	}
+	if (parts[4]) {
+		timer(points, outfile, part4, "Hashing Method", cycles);
 	}
   outfile.close();
 }

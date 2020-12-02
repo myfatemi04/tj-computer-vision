@@ -1,6 +1,9 @@
 #ifndef LAB_PART
-#define LAB_PART 3
+#define LAB_PART 2
 #endif
+
+#ifndef LAB_L032
+#define LAB_L032
 
 #include <algorithm>
 #include <vector>
@@ -85,6 +88,8 @@ PointPair part2(std::vector<Point>& points) {
   // Now, divide-and-conquer
   return helper2(points, 0, points.size());
 }
+
+#endif
 
 #if LAB_PART == 2
 
