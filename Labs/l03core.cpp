@@ -16,11 +16,11 @@
  */
 class PointPair {
   private:
-    const Point *a, *b;
+    Point a, b;
     double distance;
 
   public:
-    PointPair(const Point& a, const Point& b): a(&a), b(&b) {
+    PointPair(Point a, Point b): a(a), b(b) {
       distance = Point::distance(a, b);
     }
 
@@ -28,10 +28,10 @@ class PointPair {
       return distance;
     }
 
-    Point getA() const { return *a; }
-    Point getB() const { return *b; }
+    Point getA() const { return a; }
+    Point getB() const { return b; }
     
-    void minify(PointPair other) {
+    void minify(const PointPair& other) {
       if (other.getDistance() < distance) {
         a = other.a;
         b = other.b; 

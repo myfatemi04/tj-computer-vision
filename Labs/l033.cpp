@@ -133,7 +133,7 @@ int main(int argc, const char* argv[]) {
     savePoints(points);
   }
 
-  auto points = readPoints("points.txt");
+  auto points = readPoints();
 
   std::ofstream outfile("results.txt");
   timer(points, outfile, part2, "Recursive", 1);
