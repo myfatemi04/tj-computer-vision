@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <vector>
 #include "l03core.cpp"
-#include "geometry.cpp"
 
 /**
  * Divide and conquer method:

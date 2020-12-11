@@ -7,7 +7,6 @@
 
 #include <algorithm>
 #include <vector>
-#include "geometry.cpp"
 #include "l03core.cpp"
 #include "l032.cpp"
 
@@ -133,7 +132,7 @@ int main(int argc, const char* argv[]) {
     savePoints(points);
   }
 
-  auto points = readPoints();
+  auto points = readPoints("points1m.txt");
 
   std::ofstream outfile("results.txt");
   timer(points, outfile, part2, "Recursive", 1);

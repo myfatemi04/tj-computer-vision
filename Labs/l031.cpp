@@ -5,9 +5,8 @@
 #ifndef LAB_L031
 #define LAB_L031
 
-#include<iomanip>
-#include<list>
-#include "geometry.cpp"
+#include <iomanip>
+#include <list>
 #include "image.cpp"
 #include "l03core.cpp"
 
