@@ -35,7 +35,7 @@ num max(num a, num b) {
 	return a > b ? a : b;
 }
 
-Point* getClosestPoint(GridMap *gridmap, const Point& point, double delta) {
+Point* getClosestPoint(const GridMap& gridmap, const Point& point, double delta) {
 	auto square = makeGridSquare(point, delta);
 	auto startX = (square.first > 2) * (square.first - 2);
 	auto startY = (square.second > 2) * (square.second - 2);
@@ -45,8 +45,8 @@ Point* getClosestPoint(GridMap *gridmap, const Point& point, double delta) {
 
 	for (auto x = startX; x < startX + 4; x++) {
 		for (auto y = startY; y < startY + 4; y++) {
-			if (gridmap -> count(GridSquare(x, y)) > 0) {
-				auto point_ = gridmap -> at(GridSquare(x, y));
+			if (gridmap.count(GridSquare(x, y)) > 0) {
+				auto point_ = gridmap.at(GridSquare(x, y));
 				// If they are closer than 'delta'
 				double distance = point.distance(point_);
 				if (distance < delta) {
@@ -90,29 +90,29 @@ PointPair part4(std::vector<Point>& points) {
 	knuthShuffle(points);
 	std::cout << "shuffle:" << getMillis() - start << "ms\n";
 
-	GridMap *grid = new GridMap();
-	Point closestPoint1 = points.at(0);
-	Point closestPoint2 = points.at(1);
-	double delta = closestPoint1.distance(closestPoint2);
+	GridMap grid;
+	Point *closestPoint1 = &points.at(0);
+	Point *closestPoint2 = &points.at(1);
+	double delta = closestPoint1->distance(*closestPoint2);
 	
-	for (auto it = points.begin(); it != points.end(); it++) {
-		auto closestPoint = getClosestPoint(grid, *it, delta);
+	for (int index = 0; index < points.size(); index++) {
+		auto closestPoint = getClosestPoint(grid, points.at(index), delta);
 
 		if (closestPoint != nullptr) {
-			closestPoint1 = *it;
-			closestPoint2 = *closestPoint;
+			closestPoint1 = &points.at(index);
+			closestPoint2 = closestPoint;
 
-			delta = closestPoint1.distance(closestPoint2);
-			grid -> clear();
-			for (auto i = points.begin(); i != it; i++) {
-				grid -> emplace(makeGridSquare(*i, delta), *i);
+			delta = closestPoint1->distance(*closestPoint2);
+			grid.clear();
+			for (int i = 0; i < index; i++) {
+				grid[makeGridSquare(points.at(i), delta)] = points.at(i);
 			}
 		}
 
-		grid -> emplace(makeGridSquare(*it, delta), *it);
+		grid[makeGridSquare(points[index], delta)] = points[index];
 	}
 
-	return PointPair(closestPoint1, closestPoint2);
+	return PointPair(*closestPoint1, *closestPoint2);
 }
 
 #endif
