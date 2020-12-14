@@ -6,8 +6,7 @@
 #define LAB_L031
 
 #include <iomanip>
-#include <list>
-#include "image.cpp"
+#include <vector>
 #include "l03core.cpp"
 
 PointPair part1(std::vector<Point>& points) {

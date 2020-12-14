@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <vector>
 #include "l03core.cpp"
-#include "l032.cpp"
+// #include "l032.cpp"
 
 /**
  * Improved divide and conquer method. Optimizes based on the fact
@@ -135,7 +135,7 @@ int main(int argc, const char* argv[]) {
   auto points = readPoints("points1m.txt");
 
   std::ofstream outfile("results.txt");
-  timer(points, outfile, part2, "Recursive", 1);
+  // timer(points, outfile, part2, "Recursive", 1);
   timer(points, outfile, part3, "Recursive Optimized", 1);
   outfile.close();
 }

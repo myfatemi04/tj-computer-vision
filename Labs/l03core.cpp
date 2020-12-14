@@ -88,7 +88,7 @@ std::ostream& operator<<(std::ostream& s, const PointPair& p) {
 /**
  * General method to save a vector of points to points.txt
  */
-void savePoints(std::vector<Point>& points, const char* filename = "points.txt") {
+void savePoints(const std::vector<Point>& points, const char* filename = "points.txt") {
 	std::ofstream out(filename);
 	
 	// makes all numbers write with exactly 17 digits after the decimal point
