@@ -75,13 +75,13 @@ PointPair part4(std::vector<Point>& points) {
 	GridMap grid;
 	PointPair closest(points[0], points[1]);
 	
-	for (int index = 0; index < points.size(); index++) {
+	for (size_t index = 0; index < points.size(); index++) {
 		PointPair closestPoint = getClosestPoint(grid, points[index], closest.getDistance());
 
 		if (closest.minify(closestPoint)) {
 			grid.clear();
 
-			for (int i = 0; i < index; i++) {
+			for (size_t i = 0; i < index; i++) {
 				grid[makeGridSquare(points[i], closest.getDistance())] = points[i];
 			}
 		}
