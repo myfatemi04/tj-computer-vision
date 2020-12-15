@@ -28,6 +28,16 @@ class Point {
 			return sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 		}
 
+		/**
+		 * Checks if two points are within a certain distance of each other, inclusive.
+		 */
+		static bool areWithinDistance(const Point& a, const Point& b, double distance) {
+			return (
+				((a.x - b.x) * (a.x - b.x)) + 
+				((a.y - b.y) * (a.y - b.y))
+			) <= (distance * distance);
+		}
+
 		double distance(const Point& other) const {
 			return Point::distance(*this, other);
 		}
@@ -53,28 +63,43 @@ std::ostream& operator<<(std::ostream &stream, const Point &point) {
  */
 class PointPair {
 	private:
-	Point a, b;
-	double distance;
+		Point a, b;
+		double distance;
+		bool initialized = false;
 
 	public:
-	PointPair(Point a, Point b): a(a), b(b) {
-		distance = Point::distance(a, b);
-	}
+		PointPair() {}
 
-	double getDistance() const {
-		return distance;
-	}
-
-	Point getA() const { return a; }
-	Point getB() const { return b; }
-	
-	void minify(const PointPair& other) {
-		if (other.getDistance() < distance) {
-			a = other.a;
-			b = other.b; 
-			distance = other.distance;
+		PointPair(Point a, Point b): a(a), b(b) {
+			distance = Point::distance(a, b);
+			initialized = true;
 		}
-	}
+
+		double getDistance() const {
+			return distance;
+		}
+
+		Point getA() const { return a; }
+		Point getB() const { return b; }
+		
+		void minify(const PointPair& other) {
+			if (!initialized || other.getDistance() < distance) {
+				a = other.a;
+				b = other.b; 
+				distance = other.distance;
+				initialized = true;
+			}
+		}
+
+		void minify(PointPair *other) {
+			if (other != nullptr) {
+				this -> minify(*other);
+			}
+		}
+
+		bool isInitialized() const {
+			return this -> initialized;
+		}
 };
 
 /**

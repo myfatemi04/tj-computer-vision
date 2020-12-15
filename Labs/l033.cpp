@@ -132,11 +132,11 @@ int main(int argc, const char* argv[]) {
     savePoints(points);
   }
 
-  auto points = readPoints("points1m.txt");
+  auto points = readPoints("points100k_random.txt");
 
   std::ofstream outfile("results.txt");
   // timer(points, outfile, part2, "Recursive", 1);
-  timer(points, outfile, part3, "Recursive Optimized", 1);
+  timer(points, outfile, part3, "Recursive Optimized", 10);
   outfile.close();
 }
 
