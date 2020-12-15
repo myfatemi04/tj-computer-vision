@@ -82,13 +82,21 @@ class PointPair {
 		Point getA() const { return a; }
 		Point getB() const { return b; }
 		
-		void minify(const PointPair& other) {
-			if (!initialized || other.getDistance() < distance) {
+		bool minify(const PointPair& other) {
+			if (
+				other.initialized && (
+					!initialized ||
+					other.getDistance() < distance
+				)
+			) {
 				a = other.a;
 				b = other.b; 
 				distance = other.distance;
 				initialized = true;
+				return true;
 			}
+
+			return false;
 		}
 
 		void minify(PointPair *other) {
@@ -184,6 +192,21 @@ long long getMillis() {
 	return ms.count();
 }
 
+const char* files[] = {
+	"points100.txt",
+	"points500.txt",
+	"points1k.txt",
+	"points2k.txt",
+	"points5k.txt",
+	"points10k.txt",
+	"points20k.txt",
+	"points50k.txt",
+	"points100k.txt",
+	"points200k.txt",
+	"points500k.txt",
+	"points1m.txt"
+};
+
 #include <functional>
 
 /**
@@ -210,7 +233,7 @@ void timer(
 
 	out << std::setprecision(17);
 	out << methodName << " x [" << count << "] ";
-	out << elapsed << "ms (" << percycle << "/cycle)\n";
+	out << elapsed << "ms (" << percycle << "/cycle) " << points.size() << " points\n";
 	out << closest << std::endl;
 
 	std::cout << out.str();

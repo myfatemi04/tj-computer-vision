@@ -5,18 +5,21 @@
 
 const int MAX_POINTS = 16;
 
+/**
+ * Returns the average of the middle two values of an array
+ */
 double getMedian(const double *array, const int length) {
 	int end = length - 1;
 	// length / 2 = floor(length / 2)
-	int lowerMiddle = end / 2;
+	int lowerMiddle = end >> 2; // end / 2;
 	// length / 2 + length % 2 = ceil(length / 2)
-	int upperMiddle = lowerMiddle + end & 1;
+	int upperMiddle = lowerMiddle + (end & 1);
 
 	return (array[lowerMiddle] + array[upperMiddle]) / 2.0;
 }
 
 bool between(double a, double b, double x) {
-	return (a < x) && (x < b);
+	return (a < x) * (x < b);
 }
 
 class Rectangle {
@@ -55,7 +58,7 @@ class Rectangle {
 			);
 		}
 
-		bool intersects(const Rectangle& other) {
+		bool intersects(const Rectangle& other) const {
 			return !doesNotIntersect(other);
 		}
 
@@ -98,8 +101,10 @@ std::ostream& operator<<(std::ostream& stream, const Rectangle& out) {
 			<< out.getMinY() << ">" << out.getMaxY();
 }
 
+/**
+ * Finds the closest pair of points in a vector using brute force.
+ */
 PointPair closestPairOfPointsBruteForce(const std::vector<Point>& points) {
-	// Brute force search
 	PointPair closest = PointPair(points[0], points[1]);
 
 	for (int i = 0; i < points.size(); i++) {
@@ -111,12 +116,16 @@ PointPair closestPairOfPointsBruteForce(const std::vector<Point>& points) {
 	return closest;
 }
 
+/**
+ * Uses the optimization that a strip of sorted points only requires you
+ * to check the next 8 points.
+ */
 PointPair closestPairOfPointsStrip(std::vector<Point>& points) {
 	PointPair closestPair;
 	for (int i = 0; i < points.size(); i++) {
 		int maxJ = i + 8 < points.size() ? i + 8 : points.size();
 		for (int j = i; j < maxJ; j++) {
-			closestPair.minify(PointPair(points.at(i), points.at(j)));
+			closestPair.minify(PointPair(points[i], points[j]));
 		}
 	}
 	return closestPair;
@@ -286,26 +295,28 @@ class TreeNode {
 				center.getY() + radius
 			);
 
-			const double sqrt2 = 1.41421356;
-
-			Rectangle inscribedRectangle(
-				center.getX() - radius * sqrt2 / 2,
-				center.getX() + radius * sqrt2 / 2,
-				center.getY() - radius * sqrt2 / 2,
-				center.getY() + radius * sqrt2 / 2
-			);
-
 			if (circumscribedRectangle.intersects(boundaries)) {
 				if (divided) {
 					for (int i = 0; i < 4; i++) {
 						branches[i].addPointsWithinRadius(out, center, radius);
 					}
-				} else if (inscribedRectangle.fullyContains(boundaries)) {
-					out.insert(out.end(), points.begin(), points.end());
 				} else {
-					for (Point point : points) {
-						if (Point::areWithinDistance(center, point, radius)) {
-							out.push_back(point);
+					const double sqrt2 = 1.41421356;
+
+					Rectangle inscribedRectangle(
+						center.getX() - radius * sqrt2 / 2,
+						center.getX() + radius * sqrt2 / 2,
+						center.getY() - radius * sqrt2 / 2,
+						center.getY() + radius * sqrt2 / 2
+					);
+
+					if (inscribedRectangle.fullyContains(boundaries)) {
+						out.insert(out.end(), points.begin(), points.end());
+					} else {
+						for (Point point : points) {
+							if (Point::areWithinDistance(center, point, radius)) {
+								out.push_back(point);
+							}
 						}
 					}
 				}
@@ -335,7 +346,8 @@ class TreeNode {
 				if (found) {
 					return new Point(closest);
 				}
-			} else {
+			}
+			else {
 				// If we don't intersect the circumscribed rectangle,
 				// we are guaranteed not to have any points within the circle
 				Rectangle circumscribedRectangle(
@@ -384,24 +396,22 @@ class TreeNode {
 			std::vector<Point>& out,
 			const Rectangle& rectangle
 		) const {
-			if (rectangle.doesNotIntersect(boundaries)) {
-				return;
-			}
-
-			if (!divided) {
-				// If fully contained by rect, add all points
-				if (rectangle.fullyContains(boundaries)) {
-					out.insert(out.end(), points.begin(), points.end());
-				} else {
-					for (Point p : points) {
-						if (rectangle.contains(p)) {
-							out.push_back(p);
+			if (rectangle.intersects(boundaries)) {
+				if (!divided) {
+					// If fully contained by rect, add all points
+					if (rectangle.fullyContains(boundaries)) {
+						out.insert(out.end(), points.begin(), points.end());
+					} else {
+						for (Point p : points) {
+							if (rectangle.contains(p)) {
+								out.push_back(p);
+							}
 						}
 					}
-				}
-			} else {
-				for (int i = 0; i < 4; i++) {
-					branches[i].addPointsInRectangle(out, rectangle);
+				} else {
+					for (int i = 0; i < 4; i++) {
+						branches[i].addPointsInRectangle(out, rectangle);
+					}
 				}
 			}
 		}
@@ -483,58 +493,53 @@ void knuthShuffle(std::vector<Point>& points) {
 	}
 }
 
-int main() {
-	std::srand(time(NULL));
-	std::cout << std::setprecision(17);
-
-	std::cout << "Started program\n";
-
-	std::vector<Point> points = readPoints("points100k_random.txt");
-	
-	std::cout << "Read points\n";
-
+void timePart5(std::vector<Point>& points) {
 	knuthShuffle(points);
-
-	std::cout << "Shuffled points\n";
 
 	long long startTime = getMillis();
 
 	TreeNode tree(Rectangle(0, 1, 0, 1));
 
-	/*
-	PointPair closestPair(points[0], points[1]);
-
-	for (Point point : points) {
-		Point *closest = tree.findClosestPoint(point, closestPair.getDistance());
-		if (closest != nullptr) {
-			closestPair.minify(PointPair(point, *closest));
-		}
-		tree.addPoint(point);
-	}
-
-	std::cout << closestPair;
-	*/
-
 	for (Point point : points) {
 		tree.addPoint(point);
 	}
 
-	long long endTime = getMillis();
-	
-	std::cout << "Created tree in " << (endTime - startTime) << "ms\n";
-
-	startTime = getMillis();
 	PointPair closest;
 	int cycles = 10;
 	for (int i = 0; i < cycles; i++) {
 		closest = tree.findClosestPairOfPoints();
 	}
-	endTime = getMillis();
+	
+	long long elapsed = getMillis() - startTime;
 
-	std::cout << "Optimized 2D tree x [" << cycles << "] " << (endTime - startTime) << "ms ";
-	std::cout << "(" << (endTime - startTime)/ cycles << "/cycle)\n";
+	std::cout << "Optimized 2D tree x [" << cycles << "] " << elapsed << "ms ";
+	std::cout << "(" << elapsed/cycles << "/cycle) " << points.size() << " points\n";
 	std::cout << closest << '\n';
 }
+
+void timeMany() {
+	std::cout << std::setprecision(17);
+  std::ofstream outfile("results.txt");
+  for (int i = 0; i < 12; i++) {
+		auto points = readPoints(files[i]);
+		timePart5(points);
+  }
+	outfile.close();
+}
+
+int main(int argc, const char* argv[]) {
+	std::srand(time(NULL));
+
+	timeMany();
+
+  // if (argc > 1) {
+  //   points = readPoints(argv[1]);
+  // } else {
+  //   points = readPoints();
+  // }
+}
+
+
 
 void benchmarkRectangles(const std::vector<Point>& points, const TreeNode& tree) {
 	std::vector<Point> out;

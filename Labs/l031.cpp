@@ -26,12 +26,6 @@ PointPair part1(std::vector<Point>& points) {
 #if LAB_PART == 1
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
-
-  if (argc > 1) {
-    std::vector<Point> points = generatePoints(atoi(argv[1]));
-    savePoints(points);
-  }
-
   auto points = readPoints();
 
   std::ofstream outfile("results.txt");

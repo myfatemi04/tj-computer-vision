@@ -20,41 +20,35 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
   int numPoints = (end - begin);
   int mid = (begin + end) >> 1;
   if (numPoints == 2) {
-    return PointPair(points.at(begin), points.at(end - 1));
+    return PointPair(points[begin], points[end - 1]);
   } else if (numPoints == 3) {
-    PointPair p1 = PointPair(points.at(begin + 0), points.at(begin + 1));
-    PointPair p2 = PointPair(points.at(begin + 1), points.at(begin + 2));
-    PointPair p3 = PointPair(points.at(begin + 2), points.at(begin + 0));
-    
-    PointPair res = p1;
-    res.minify(p2);
-    res.minify(p3);
+    PointPair closest;
+    closest.minify(PointPair(points[begin + 0], points[begin + 1]));
+    closest.minify(PointPair(points[begin + 1], points[begin + 2]));
+    closest.minify(PointPair(points[begin + 2], points[begin + 0]));
 
-    return res;
+    return closest;
   } else {
+    PointPair closest;
     // Right side
-    PointPair min1 = helper2(points, begin, mid);
+    closest.minify(helper2(points, begin, mid));
     // Left side
-    PointPair min2 = helper2(points, mid, end);
+    closest.minify(helper2(points, mid, end));
     // Closest pair where both are in left, or both are in right
-    PointPair closest = min1;
-    closest.minify(min2);
     double d = closest.getDistance();
 
     // Maybe one of the points is on the left side and one is on the right?
     // Make a 'strip' of points down the middle
     int stripLeft = mid, stripRight = mid;
-    double middleX = points.at(mid).getX();
-    double minX = middleX - d;
-    double maxX = middleX + d;
+    double middleX = points[mid].getX();
 
     // [begin, mid) = left side
-    while ((stripLeft > begin) && (points.at(stripLeft - 1).getX() >= minX)) {
+    while ((stripLeft > begin) && (points[stripLeft - 1].getX() >= middleX - d)) {
       stripLeft--;
     }
 
     // [mid, end] = right side
-    while ((stripRight < end) && (points.at(stripRight).getX() <= maxX)) {
+    while ((stripRight < end) && (points[stripRight].getX() <= middleX + d)) {
       stripRight++;
     }
 
@@ -62,11 +56,11 @@ PointPair helper2(std::vector<Point>& points, int begin, int end) {
     // a point on the right side of the strip until the difference in
     // X is greater than d.
     for (int i = stripLeft; i < mid; i++) {
-      double maxX = points.at(i).getX() + d;
-      for (int j = mid; j < stripRight && points.at(j).getX() < maxX; j++) {
+      double maxX = points[i].getX() + d;
+      for (int j = mid; j < stripRight && points[j].getX() < maxX; j++) {
         closest.minify({
-          points.at(i),
-          points.at(j)
+          points[i],
+          points[j]
         });
       }
     }
@@ -92,6 +86,8 @@ PointPair part2(std::vector<Point>& points) {
 
 #if LAB_PART == 2
 
+#include "l031.cpp"
+
 /**
  * Main method. Sets the random seed to the current time.
  * Also takes in an argument for the number of points to use.
@@ -101,15 +97,16 @@ PointPair part2(std::vector<Point>& points) {
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
 
+  std::vector<Point> points;
+
   if (argc > 1) {
-    int npoints = atoi(argv[1]);
-    std::vector<Point> points = generatePoints(npoints);
-    savePoints(points);
+    points = readPoints(argv[1]);
+  } else {
+    points = readPoints();
   }
 
-  auto points = readPoints();
-
   std::ofstream outfile("results.txt");
+  // timer(points, outfile, part1, "Brute Force", 1);
   timer(points, outfile, part2, "Recursive", 10);
   outfile.close();
 }

@@ -32,50 +32,26 @@ GridSquare makeGridSquare(const Point& point, double delta) {
 	);
 }
 
-num max(num a, num b) {
-	return a > b ? a : b;
-}
+/**
+ * Returns a closest point, at a pair, where the first point is the point found,
+ * and the second point is the original point
+ */
+PointPair getClosestPoint(const GridMap& gridmap, const Point& point, double delta) {
+	GridSquare center = makeGridSquare(point, delta);
+	num startX = (center.first > 2) * (center.first - 2);
+	num startY = (center.second > 2) * (center.second - 2);
+	PointPair pair;
 
-Point* getClosestPoint(const GridMap& gridmap, const Point& point, double delta) {
-	auto center = makeGridSquare(point, delta);
-	auto startX = (center.first > 2) * (center.first - 2);
-	auto startY = (center.second > 2) * (center.second - 2);
-
-	num closestX = 0;
-	num closestY = 0;
-	double closestDistance = 2;
-	bool found = false;
-	static GridSquare square(0, 0);
-
-	for (auto x = startX; x < startX + 5; x++) {
-		for (auto y = startY; y < startY + 5; y++) {
-			square.first = x;
-			square.second = y;
+	for (num x = startX; x < startX + 5; x++) {
+		for (num y = startY; y < startY + 5; y++) {
+			GridSquare square(x, y);
 			if (gridmap.count(square)) {
-				// If they are closer than 'delta'
-				double distance = point.distance(gridmap.at(square));
-				if (distance < delta) {
-					if (!found) {
-						// Set the initial value for 'closest'
-						closestX = x;
-						closestY = y;
-						found = true;
-					} else if (distance < closestDistance) {
-						// Set the updated value for 'closest'
-						closestX = x;
-						closestY = y;
-						closestDistance = distance;
-					}
-				}
+				pair.minify(PointPair(gridmap.at(square), point));
 			}
 		}
 	}
 	
-	if (found) {
-		return new Point(gridmap.at(GridSquare(closestX, closestY)));
-	}
-	
-	return nullptr;
+	return pair;
 }
 
 void knuthShuffle(std::vector<Point>& points) {
@@ -94,69 +70,54 @@ void knuthShuffle(std::vector<Point>& points) {
 }
 
 PointPair part4(std::vector<Point>& points) {
-	long long start = getMillis();
 	knuthShuffle(points);
-	// std::cout << "shuffle:" << getMillis() - start << "ms\n";
 
 	GridMap grid;
-	Point *closestPoint1 = &points.at(0);
-	Point *closestPoint2 = &points.at(1);
-	double delta = closestPoint1->distance(*closestPoint2);
-
-	long long timeSpentClearing = 0;
-	long long loopStartTime = getMillis();
+	PointPair closest(points[0], points[1]);
+	
 	for (int index = 0; index < points.size(); index++) {
-		auto closestPoint = getClosestPoint(grid, points.at(index), delta);
+		PointPair closestPoint = getClosestPoint(grid, points[index], closest.getDistance());
 
-		if (closestPoint != nullptr) {
-			closestPoint1 = &points.at(index);
-			closestPoint2 = closestPoint;
-
-			delta = closestPoint1->distance(*closestPoint2);
-
-			long long timeMarker1 = getMillis();
+		if (closest.minify(closestPoint)) {
 			grid.clear();
-			
-			long long timeMarker2 = getMillis();
 
 			for (int i = 0; i < index; i++) {
-				grid[makeGridSquare(points.at(i), delta)] = points.at(i);
+				grid[makeGridSquare(points[i], closest.getDistance())] = points[i];
 			}
-			
-			long long timeMarker3 = getMillis();
-
-			// std::cout << "[restart] grid clear " << (timeMarker2 - timeMarker1) << "ms, ";
-			// std::cout << "grid remake " << (timeMarker3 - timeMarker2) << "ms\n";
-			timeSpentClearing += (timeMarker3 - timeMarker1);
 		}
 
-		grid[makeGridSquare(points.at(index), delta)] = points.at(index);
+		grid[makeGridSquare(points[index], closest.getDistance())] = points[index];
 	}
 
-	long long loopEndTime = getMillis();
-	long long timeSpentQuerying = loopEndTime - loopStartTime - timeSpentClearing;
-
-	// std::cout << "Spent a total of " << timeSpentClearing << "ms remaking the grid\n";
-	// std::cout << "Spent a total of " << timeSpentQuerying << "ms finding points (";
-	// std::cout << (timeSpentQuerying / (double)points.size()) << "ms / point)\n";
-
-	return PointPair(*closestPoint1, *closestPoint2);
+	return closest;
 }
 
 #endif
 
 #if LAB_PART == 4
 
+void timeMany();
+
 int main() {
 	std::srand(time(NULL));
+	// timeMany();
 
   auto points = readPoints("points100k.txt");
-  auto pointsDuplicate = std::vector<Point>(points);
+  // auto pointsDuplicate = std::vector<Point>(points);
 
   std::ofstream outfile("results.txt");
-  timer(pointsDuplicate, outfile, part3, "Recursive Optimized", 2);
+  // timer(pointsDuplicate, outfile, part3, "Recursive Optimized", 2);
   timer(points, outfile, part4, "Hashing Method", 2);
   outfile.close();
+}
+
+void timeMany() {
+  std::ofstream outfile("results.txt");
+  for (int i = 0; i < 12; i++) {
+		auto points = readPoints(files[i]);
+    timer(points, outfile, part4, "Dictionary", 10);
+  }
+	outfile.close();
 }
 
 #endif
