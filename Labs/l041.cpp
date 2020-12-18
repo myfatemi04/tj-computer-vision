@@ -89,38 +89,92 @@ class Point {
 		}
 };
 
-typedef unsigned char byte;
+std::ostream& operator<<(std::ostream& stream, const Point& point) {
+	stream << '(';
+	int dims = point.getDimensions();
+	for (int i = 0; i < dims; i++) {
+		stream << point[i];
+		if (i < dims - 1) {
+			stream << ", ";
+		}
+	}
+
+	stream << ')';
+	return stream;
+}
+
+typedef const int* pixel;
+
+const pixel black  = new int[3] { 0x00, 0x00, 0x00 };
+const pixel white  = new int[3] { 0xFF, 0xFF, 0xFF };
+const pixel red    = new int[3] { 0xFF, 0x00, 0x00 };
+const pixel orange = new int[3] { 0xFF, 0x7F, 0x00 };
+const pixel yellow = new int[3] { 0xFF, 0x00, 0xFF };
+const pixel green  = new int[3] { 0x00, 0xFF, 0x00 };
+const pixel blue   = new int[3] { 0x00, 0x00, 0xFF };
+const pixel purple = new int[3] { 0xFF, 0x00, 0xFF };
 
 class PPM {
 	private:
-		byte **pixels;
+		pixel **pixels;
 		int width, height;
 
 	public:
 		PPM(int width, int height): width(width), height(height) {
-			pixels = new byte*[height];
+			pixels = new pixel*[height];
 			for (int y = 0; y < height; y++) {
-				pixels[y] = new byte[width];
+				pixels[y] = new pixel[width];
 				for (int x = 0; x < width; x++) {
-					pixels[y][x] = 0;
+					pixels[y][x] = white;
 				}
 			}
 		}
 
-		void setPixel(int x, int y, byte value) const {
+		void setPixel(int x, int y, pixel value) {
+			if (x < 0 || x >= width || y < 0 || y >= height) {
+				std::cerr << "ERROR: Invalid Pixel " << x << ", " << y << "\n";
+			}
 			pixels[y][x] = value;
 		}
 
-		byte getPixel(int x, int y) const {
+		pixel getPixel(int x, int y) const {
 			return pixels[y][x];
 		}
+
+		int getWidth() const { return width; }
+		int getHeight() const { return height; }
+
+		friend std::ostream& operator<<(std::ostream& stream, const PPM& ppm);
 };
+
+std::ostream& operator<<(std::ostream& stream, const PPM& ppm) {
+	// PPM header
+	stream << "P3 ";
+	// Image dimensions
+	stream << ppm.width << ' ' << ppm.height << ' ';
+	// Max value of each rgb channel
+	stream << 255 << ' ';
+	
+	// Write the pixels like this:
+	// R G B R G B R G B
+	// R G B R G B R G B
+	// Each R G B corresponds to a single pixel
+	for (int y = 0; y < ppm.height; y++) {
+		for (int x = 0; x < ppm.width; x++) {
+			pixel p = ppm.getPixel(x, y);
+			stream << p[0] << ' ' << p[1] << ' ' << p[2] << ' ';
+		}
+		stream << '\n';
+	}
+
+	return stream;
+}
 
 void bruteForce(const Points& points, int k) {
 }
 
 double random() {
-	return rand() / (double)RAND_MAX;
+	return rand() / (double)(RAND_MAX + 1);
 }
 
 void addRandomPoints(Points& out, int n) {
@@ -160,25 +214,65 @@ void calcMeans(Means& out, const std::vector<Cluster>& clusters) {
 }
 
 #include <time.h>
+#include <fstream>
 
 int main() {
 	std::srand(time(NULL));
 
 	Points points;
-	addRandomPoints(points, 500);
+	addRandomPoints(points, 50000);
 
-	Means means; 
-	addRandomPoints(means, 3);
+	const int k = 5;
+	Means means;
+	Means meansTemporary;
+	addRandomPoints(means, k);
 
 	std::vector<Cluster> clusters;
-	classifyPoints(clusters, points, means);
-
-	Means newMeans;
-	calcMeans(newMeans, clusters);
-
-	if (newMeans != means) {
-		std::cout << "new means are different\n";
-	} else {
-		std::cout << "means are same\n";
+	for (int i = 0; i < k; i++) {
+		clusters.push_back(Cluster());
 	}
+	while (true) {
+		for (int i = 0; i < k; i++) {
+			clusters[i].clear();
+		}
+		meansTemporary.clear();
+
+		classifyPoints(clusters, points, means);
+		calcMeans(meansTemporary, clusters);
+
+		if (means != meansTemporary) {
+			means = meansTemporary;
+		} else {
+			break;
+		}
+	}
+
+	for (Point p : means) {
+		std::cout << p << '\n';	
+	}
+
+	PPM ppm(800, 800);
+
+	const pixel *clusterColors = new pixel[5] {
+		red,
+		green,
+		blue,
+		orange,
+		purple
+	};
+
+	for (int i = 0; i < k; i++) {
+		Cluster cluster = clusters[i];
+		std::cout << cluster.size() << ' ';
+		for (Point point : cluster) {
+			ppm.setPixel((int)(point[0] * 800), (int)(point[1] * 800), clusterColors[i]);
+		}
+	}
+
+	std::ofstream kmeansOutput("kmeansOutput.ppm");
+	kmeansOutput << ppm;
+	kmeansOutput.close();
+
+	std::cout << '\n';
+	std::cout << "Done\n";
 }

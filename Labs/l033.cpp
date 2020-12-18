@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <vector>
 #include "l03core.cpp"
-// #include "l032.cpp"
 
 /**
  * Improved divide and conquer method. Optimizes based on the fact
@@ -108,6 +107,8 @@ PointPair part3(std::vector<Point>& points) {
 
 #if LAB_PART == 3
 
+#include "l032.cpp"
+
 void timeMany();
 
 /**
@@ -118,17 +119,19 @@ void timeMany();
  */
 int main(int argc, const char* argv[]) {
   std::srand(time(NULL));
-  timeMany();
 
-  // std::vector<Point> points;
-  // if (argc > 1) {
-  //   points = readPoints(argv[1]);
-  // } else {
-  //   points = readPoints();
-  // }
+  // timeMany();
+  
+  std::vector<Point> points;
+  if (argc > 1) {
+    points = readPoints(argv[1]);
+  } else {
+    points = readPoints();
+  }
 
-  // std::ofstream outfile("results.txt");
-  // timer(points, outfile, part3, "Recursive Optimized", 10);
+  std::ofstream outfile("results.txt");
+  timer(points, outfile, part2, "Recursive Original", 10);
+  timer(points, outfile, part3, "Recursive Optimized", 10);
 }
 
 void timeMany() {
