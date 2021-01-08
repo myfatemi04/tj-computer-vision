@@ -37,10 +37,10 @@ class Point {
 			return dimensions;
 		}
 
-		double distance2(const Point& other) const {
-			double sum = 0, difference;
+		double calculateDistanceSquared(const Point& other) const {
+			double sum = 0;
 			for (size_t dimension = 0; dimension < max(dimensions, other.dimensions); dimension++) {
-				difference = other[dimension] - at(dimension);
+				double difference = other[dimension] - at(dimension);
 				sum += difference * difference;
 			}
 			return sum;
@@ -63,7 +63,7 @@ class Point {
 				return false;
 			}
 			for (size_t i = 0; i < dimensions; i++) {
-				if (at(i) != other[i]) {
+				if (at(i) != other.at(i)) {
 					return false;
 				}
 			}
@@ -75,13 +75,13 @@ class Point {
 		 */
 		int classify(const Means& means) const {
 			int closestIndex = 0;
-			double closestDistance2 = distance2(means[0]);
-			for (size_t meanIndex = 1; meanIndex < means.size(); meanIndex++) {
+			double closestDistanceSquared = calculateDistanceSquared(means[0]);
+			for (size_t index = 1; index < means.size(); index++) {
 				// Assume all means have the same dimension as this point
-				double distance2_ = distance2(means[meanIndex]);
-				if (distance2_ < closestDistance2) {
-					closestIndex = meanIndex;
-					closestDistance2 = distance2_;
+				double distanceSquared = calculateDistanceSquared(means[index]);
+				if (distanceSquared < closestDistanceSquared) {
+					closestIndex = index;
+					closestDistanceSquared = distanceSquared;
 				}
 			}
 
@@ -107,14 +107,16 @@ typedef struct {
 	int r, g, b;
 } Pixel;
 
-const Pixel black  = { 0x00, 0x00, 0x00 };
-const Pixel white  = { 0xFF, 0xFF, 0xFF };
-const Pixel red    = { 0xFF, 0x00, 0x00 };
+const Pixel black  = { 0x00, 0x00, 0x00 }; // 000
+const Pixel blue   = { 0x00, 0x00, 0xFF }; // 001
+const Pixel green  = { 0x00, 0xFF, 0x00 }; // 010
+const Pixel cyan   = { 0x00, 0xFF, 0xFF }; // 011
+const Pixel red    = { 0xFF, 0x00, 0x00 }; // 100
+const Pixel purple = { 0xFF, 0x00, 0xFF }; // 101
+const Pixel yellow = { 0xFF, 0xFF, 0x00 }; // 110
+const Pixel white  = { 0xFF, 0xFF, 0xFF }; // 111
+
 const Pixel orange = { 0xFF, 0x7F, 0x00 };
-const Pixel yellow = { 0xFF, 0x00, 0xFF };
-const Pixel green  = { 0x00, 0xFF, 0x00 };
-const Pixel blue   = { 0x00, 0x00, 0xFF };
-const Pixel purple = { 0xFF, 0x00, 0xFF };
 
 class PPM {
 	private:
@@ -282,23 +284,24 @@ void part2() {
 
 	PPM toConvert;
 	std::ifstream toConvertFile("./peppers.ppm");
-
 	toConvertFile >> toConvert;
+	toConvertFile.close();
+
 	toConvert.getAllPixelColors(points);
 
-	std::cout << "Num points: " << points.size() << "\n";
-
 	const int k = 4;
-	Means means, meansTemporary;
-	means.push_back(Point(  0,  0,  0));
-	means.push_back(Point( 85, 85, 85));
-	means.push_back(Point(170,170,170));
-	means.push_back(Point(255,255,255));
+	Means means {
+		{ 0, 0, 0 },
+		{ 85, 85, 85 },
+		{ 170, 170, 170 },
+		{ 255, 255, 255 }
+	}, meansTemporary;
 
 	std::vector<Cluster> clusters;
 	for (int i = 0; i < k; i++) {
 		clusters.push_back(Cluster());
 	}
+	
 	while (true) {
 		for (int i = 0; i < k; i++) {
 			clusters[i].clear();
@@ -315,38 +318,30 @@ void part2() {
 		}
 	}
 
-	std::cout << "Found means\n";
-
 	PPM ppm(toConvert.getWidth(), toConvert.getHeight());
 	for (int x = 0; x < toConvert.getWidth(); x++) {
 		for (int y = 0; y < toConvert.getHeight(); y++) {
-			const Pixel pixel = toConvert.getPixel(x,y);
+			auto pixel = toConvert.getPixel(x, y);
 
-			const Point p = {
+			Point point = {
 				(double) pixel.r,
 				(double) pixel.g,
 				(double) pixel.b
 			};
 
-			int meanIndex = p.classify(means);
-
-			const Point classification = means[meanIndex];
+			Point classification = means[point.classify(means)];
 
 			ppm.setPixel(x, y, {
-				(int)classification[0],
-				(int)classification[1],
-				(int)classification[2]
+				(int) classification[0],
+				(int) classification[1],
+				(int) classification[2]
 			});
 		}
 	}
 
-	std::cout << "Converted file\n";
-
 	std::ofstream kmeansOutput("peppers.out.ppm");
 	kmeansOutput << ppm;
 	kmeansOutput.close();
-
-	std::cout << "Done\n";
 }
 
 #include <time.h>
