@@ -62,7 +62,7 @@ class Point {
 			if (dimensions != other.dimensions) {
 				return false;
 			}
-			for (int i = 0; i < dimensions; i++) {
+			for (size_t i = 0; i < dimensions; i++) {
 				if (at(i) != other[i]) {
 					return false;
 				}
@@ -76,7 +76,7 @@ class Point {
 		int classify(const Means& means) const {
 			int closestIndex = 0;
 			double closestDistance2 = distance2(means[0]);
-			for (int meanIndex = 1; meanIndex < means.size(); meanIndex++) {
+			for (size_t meanIndex = 1; meanIndex < means.size(); meanIndex++) {
 				// Assume all means have the same dimension as this point
 				double distance2_ = distance2(means[meanIndex]);
 				if (distance2_ < closestDistance2) {
@@ -103,34 +103,38 @@ std::ostream& operator<<(std::ostream& stream, const Point& point) {
 	return stream;
 }
 
-typedef const int* pixel;
+typedef struct {
+	int r, g, b;
+} Pixel;
 
-const pixel black  = new int[3] { 0x00, 0x00, 0x00 };
-const pixel white  = new int[3] { 0xFF, 0xFF, 0xFF };
-const pixel red    = new int[3] { 0xFF, 0x00, 0x00 };
-const pixel orange = new int[3] { 0xFF, 0x7F, 0x00 };
-const pixel yellow = new int[3] { 0xFF, 0x00, 0xFF };
-const pixel green  = new int[3] { 0x00, 0xFF, 0x00 };
-const pixel blue   = new int[3] { 0x00, 0x00, 0xFF };
-const pixel purple = new int[3] { 0xFF, 0x00, 0xFF };
+const Pixel black  = { 0x00, 0x00, 0x00 };
+const Pixel white  = { 0xFF, 0xFF, 0xFF };
+const Pixel red    = { 0xFF, 0x00, 0x00 };
+const Pixel orange = { 0xFF, 0x7F, 0x00 };
+const Pixel yellow = { 0xFF, 0x00, 0xFF };
+const Pixel green  = { 0x00, 0xFF, 0x00 };
+const Pixel blue   = { 0x00, 0x00, 0xFF };
+const Pixel purple = { 0xFF, 0x00, 0xFF };
 
 class PPM {
 	private:
-		pixel **pixels;
+		Pixel **pixels;
 		int width, height;
 
 	public:
+		PPM() {}
+
 		PPM(int width, int height): width(width), height(height) {
-			pixels = new pixel*[height];
+			pixels = new Pixel*[height];
 			for (int y = 0; y < height; y++) {
-				pixels[y] = new pixel[width];
+				pixels[y] = new Pixel[width];
 				for (int x = 0; x < width; x++) {
 					pixels[y][x] = white;
 				}
 			}
 		}
 
-		void setPixel(int x, int y, pixel value) {
+		void setPixel(int x, int y, Pixel value) {
 			if (x < 0 || x >= width || y < 0 || y >= height) {
 				// std::cerr << "ERROR: Invalid Pixel " << x << ", " << y << "\n";
 			} else {
@@ -138,11 +142,11 @@ class PPM {
 			}
 		}
 
-		pixel getPixel(int x, int y) const {
+		Pixel getPixel(int x, int y) const {
 			return pixels[y][x];
 		}
 
-		void drawCircle(int center_x, int center_y, double radius, pixel color) {
+		void drawCircle(int center_x, int center_y, double radius, Pixel color) {
 			// starts with the topmost point
 			int x = 0;
 			int y = (int)(radius + 0.5); // round up
@@ -180,8 +184,34 @@ class PPM {
 		int getWidth() const { return width; }
 		int getHeight() const { return height; }
 
+		void getAllPixelColors(std::vector<Point>& colors) const {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					const Pixel pixel = pixels[y][x];
+					colors.push_back({(double)pixel.r, (double)pixel.g, (double)pixel.b});
+				}
+			}
+		}
+
 		friend std::ostream& operator<<(std::ostream& stream, const PPM& ppm);
+		friend std::istream& operator>>(std::istream& stream, PPM& ppm);
 };
+
+std::istream& operator>>(std::istream& stream, PPM& ppm) {
+	stream.ignore(2); // "P3"
+	int maxActivation = 0, r, g, b;
+	stream >> ppm.width >> ppm.height >> maxActivation;
+	ppm.pixels = new Pixel*[ppm.height];
+	for (int y = 0; y < ppm.height; y++) {
+		ppm.pixels[y] = new Pixel[ppm.width];
+		for (int x = 0; x < ppm.width; x++) {
+			stream >> r >> g >> b;
+			ppm.pixels[y][x] = {r, g, b};
+		}
+	}
+
+	return stream;
+}
 
 std::ostream& operator<<(std::ostream& stream, const PPM& ppm) {
 	// PPM header
@@ -197,16 +227,13 @@ std::ostream& operator<<(std::ostream& stream, const PPM& ppm) {
 	// Each R G B corresponds to a single pixel
 	for (int y = 0; y < ppm.height; y++) {
 		for (int x = 0; x < ppm.width; x++) {
-			pixel p = ppm.getPixel(x, y);
-			stream << p[0] << ' ' << p[1] << ' ' << p[2] << ' ';
+			Pixel p = ppm.getPixel(x, y);
+			stream << p.r << ' ' << p.g << ' ' << p.b << ' ';
 		}
 		stream << '\n';
 	}
 
 	return stream;
-}
-
-void bruteForce(const Points& points, int k) {
 }
 
 double getRandom() {
@@ -250,14 +277,23 @@ void calcMeans(Means& out, const std::vector<Cluster>& clusters) {
 }
 
 #include <fstream>
-void part1() {
+void part2() {
 	Points points;
-	addRandomPoints(points, 100);
 
-	const int k = 5;
-	Means means;
-	Means meansTemporary;
-	addRandomPoints(means, k);
+	PPM toConvert;
+	std::ifstream toConvertFile("./peppers.ppm");
+
+	toConvertFile >> toConvert;
+	toConvert.getAllPixelColors(points);
+
+	std::cout << "Num points: " << points.size() << "\n";
+
+	const int k = 4;
+	Means means, meansTemporary;
+	means.push_back(Point(  0,  0,  0));
+	means.push_back(Point( 85, 85, 85));
+	means.push_back(Point(170,170,170));
+	means.push_back(Point(255,255,255));
 
 	std::vector<Cluster> clusters;
 	for (int i = 0; i < k; i++) {
@@ -279,33 +315,34 @@ void part1() {
 		}
 	}
 
-	// for (Point p : means) {
-	// 	std::cout << p << '\n';	
-	// }
+	std::cout << "Found means\n";
 
-	PPM ppm(800, 800);
+	PPM ppm(toConvert.getWidth(), toConvert.getHeight());
+	for (int x = 0; x < toConvert.getWidth(); x++) {
+		for (int y = 0; y < toConvert.getHeight(); y++) {
+			const Pixel pixel = toConvert.getPixel(x,y);
 
-	const pixel *clusterColors = new pixel[5] {
-		red,
-		green,
-		blue,
-		orange,
-		purple
-	};
+			const Point p = {
+				(double) pixel.r,
+				(double) pixel.g,
+				(double) pixel.b
+			};
 
-	for (int i = 0; i < k; i++) {
-		Cluster cluster = clusters[i];
-		Point point = means[i];
-		ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 3, black);
+			int meanIndex = p.classify(means);
 
-		// std::cout << cluster.size() << ' ';
-		for (Point point : cluster) {
-			ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 2, clusterColors[i]);
+			const Point classification = means[meanIndex];
+
+			ppm.setPixel(x, y, {
+				(int)classification[0],
+				(int)classification[1],
+				(int)classification[2]
+			});
 		}
 	}
-	// std::cout << '\n';
 
-	std::ofstream kmeansOutput("clusters.ppm");
+	std::cout << "Converted file\n";
+
+	std::ofstream kmeansOutput("peppers.out.ppm");
 	kmeansOutput << ppm;
 	kmeansOutput.close();
 
@@ -316,5 +353,5 @@ void part1() {
 int main() {
 	std::srand(time(NULL));
 
-	part1();	
+	part2();	
 }
