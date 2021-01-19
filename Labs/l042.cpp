@@ -283,7 +283,7 @@ void part2() {
 	Points points;
 
 	PPM toConvert;
-	std::ifstream toConvertFile("./peppers.ppm");
+	std::ifstream toConvertFile("./input.ppm");
 	toConvertFile >> toConvert;
 	toConvertFile.close();
 
@@ -339,7 +339,7 @@ void part2() {
 		}
 	}
 
-	std::ofstream kmeansOutput("peppers.out.ppm");
+	std::ofstream kmeansOutput("output.ppm");
 	kmeansOutput << ppm;
 	kmeansOutput.close();
 }
