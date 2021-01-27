@@ -314,16 +314,47 @@ class KDTreeNode {
 
 		void drawToPPM(PPM& ppm, Bounds bounds = { 0, 0, 1, 1 }) {
 			if (hasValue) {
-				ppm.drawLineThroughPoint(value[0], value[1], axis, bounds);
-				ppm.setPixel((int)(value[0] * 800), (int)(value[1] * 800), black);
+				int axisToDrawThrough = axis == 0 ? 1 : 0;
+				ppm.drawLineThroughPoint(value[0], value[1], axisToDrawThrough, bounds);
 
 				if (gt != nullptr) {
-					gt->drawToPPM(ppm, { axis ? bounds.minX : value[0], !axis ? bounds.minY : value[1], bounds.maxX, bounds.maxY });
+					gt->drawToPPM(ppm, {
+						(axis == 0) ? value[0] : bounds.minX,
+						(axis == 1) ? value[1] : bounds.minY,
+						bounds.maxX,
+						bounds.maxY
+					});
 				}
 
 				if (lt != nullptr) {
-					lt->drawToPPM(ppm, { bounds.minX, bounds.minY, axis ? bounds.maxX : value[0], !axis ? bounds.maxY : value[1] });
+					lt->drawToPPM(ppm, {
+						bounds.minX,
+						bounds.minY,
+						(axis == 0) ? value[0] : bounds.maxX,
+						(axis == 1) ? value[1] : bounds.maxY
+					});
 				}
+
+				ppm.drawCircle((int)(value[0] * 800), (int)(value[1] * 800), 2, black);
+			}
+		}
+
+		void printTree(int indent = 0) {
+			std::string space(indent, ' ');
+			std::cout << space << "K-D Tree along axis " << axis;
+			if (hasValue) {
+				std::cout << " with point (" << value[0] << ", " << value[1] << ")";
+			}
+			std::cout << '\n';
+
+			if (gt != nullptr) {
+				std::cout << space << "GTTree:\n";
+				gt->printTree(indent + 2);
+			}
+
+			if (lt != nullptr) {
+				std::cout << space << "LTTree:\n";
+				lt->printTree(indent + 2);
 			}
 		}
 };
@@ -428,7 +459,7 @@ void part3() {
 		tree.addPoint(point);
 	}
 
-	std::cout << "Points in tree: " << tree.size() << "\n";
+	tree.printTree();
 
 	PPM ppm(800, 800);
 	tree.drawToPPM(ppm);
