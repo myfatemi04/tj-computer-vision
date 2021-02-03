@@ -440,7 +440,7 @@ void readPoints(std::vector<Point>& output, const char* filename = "points.txt")
 }
 
 void part3() {
-	std::cout << "Lab 3 Part 3 - KD Trees!\n";
+	std::cout << "Lab 4 Part 3 - KD Trees!\n";
 	std::cout << "Would you like to generate a new file of 10 points?\n";
 	std::cout << "(Warning: Previous file will be overwritten)\n";
 	std::cout << "Choose (yes/no): ";
@@ -459,7 +459,7 @@ void part3() {
 		tree.addPoint(point);
 	}
 
-	tree.printTree();
+	// tree.printTree();
 
 	PPM ppm(800, 800);
 	tree.drawToPPM(ppm);
