@@ -539,8 +539,6 @@ int main(int argc, const char* argv[]) {
   // }
 }
 
-
-
 void benchmarkRectangles(const std::vector<Point>& points, const TreeNode& tree) {
 	std::vector<Point> out;
 

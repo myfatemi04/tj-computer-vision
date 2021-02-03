@@ -193,18 +193,18 @@ long long getMillis() {
 }
 
 const char* files[] = {
-	"points100.txt",
-	"points500.txt",
-	"points1k.txt",
-	"points2k.txt",
-	"points5k.txt",
-	"points10k.txt",
-	"points20k.txt",
-	"points50k.txt",
-	"points100k.txt",
-	"points200k.txt",
-	"points500k.txt",
-	"points1m.txt"
+	"points_files/points100.txt",
+	"points_files/points500.txt",
+	"points_files/points1k.txt",
+	"points_files/points2k.txt",
+	"points_files/points5k.txt",
+	"points_files/points10k.txt",
+	"points_files/points20k.txt",
+	"points_files/points50k.txt",
+	"points_files/points100k.txt",
+	"points_files/points200k.txt",
+	"points_files/points500k.txt",
+	"points_files/points1m.txt"
 };
 
 #include <functional>
