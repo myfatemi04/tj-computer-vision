@@ -387,7 +387,6 @@ class KDTreeNode {
 		const int dimensionCount;
 		KDTreeNode *gt = nullptr, *lt = nullptr;
 		Point value;
-		Point lastClassification = Point(-1, -1);
 		Bounds boundaries;
 		bool hasValue = false;
 
@@ -505,8 +504,7 @@ class KDTreeNode {
 			const vector<Point>& means)
 		{
 			if (validIndexes.size() == 0) {
-				// Impossible for any to be dominated
-				return;
+				throw std::string("There are no remaining valid indexes");
 			}
 
 			for (auto first = validIndexes.begin(); first != validIndexes.end(); first++) {
@@ -530,9 +528,9 @@ class KDTreeNode {
 			set<int> validMeanIndexes,
 			const vector<Point>& means)
 		{
-			// set<int> dominatedMeanIndexes;
-			// getDominatedMeanIndexesToSet(dominatedMeanIndexes, validMeanIndexes, means);
-			// removeFromSet(validMeanIndexes, dominatedMeanIndexes);
+			set<int> dominatedMeanIndexes;
+			getDominatedMeanIndexesToSet(dominatedMeanIndexes, validMeanIndexes, means);
+			removeFromSet(validMeanIndexes, dominatedMeanIndexes);
 			
 			if (hasValue == false) return;
 
@@ -787,7 +785,6 @@ void part4() {
 		ppm.drawCircle((int)(mean[0] * 800), (int)(mean[1] * 800), 4, black);
 		ppm.drawCircle((int)(mean[0] * 800), (int)(mean[1] * 800), 5, black);
 
-		// std::cout << cluster.size() << ' ';
 		for (const Point& point : cluster) {
 			ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 2, clusterColors[i]);
 			std::cout << "Drawing point " << point << " with cluster " << i << '\n';
