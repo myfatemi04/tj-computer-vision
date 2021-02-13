@@ -200,7 +200,8 @@ class Bounds {
 				}
 			}
 
-			return dominantPoint;
+			return 0;
+			// return dominantPoint;
 		}
 
 		Bounds createClippedVersionAfterPoint(const Point& clipper, int axis) const {
@@ -767,9 +768,6 @@ void part4() {
 	debug("reached end");
 
 	PPM ppm(800, 800);
-	for (const Point& mean : means) {
-		ppm.drawCircle((int) (mean[0] * 800), (int) (mean[1] * 800), 3, black);
-	}
 
 	const Pixel *clusterColors = new Pixel[5] {
 		red,
@@ -787,11 +785,12 @@ void part4() {
 
 		for (const Point& point : cluster) {
 			ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 2, clusterColors[i]);
-			std::cout << "Drawing point " << point << " with cluster " << i << '\n';
+			std::cout << "Drawing point " << point << " with cluster " << i << " with color <" << clusterColors[i].r << ", ";
+			std::cout << clusterColors[i].g << ", " << clusterColors[i].b << ">\n";
 		}
 	}
 
-	tree.drawToPPM(ppm);
+	// tree.drawToPPM(ppm);
 	debug("rendered ppm");
 
 	std::ofstream out("kdtree_kmeans.ppm");
