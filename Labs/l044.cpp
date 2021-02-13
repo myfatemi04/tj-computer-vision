@@ -1,17 +1,23 @@
 #include <vector>
+#include <set>
 #include <iostream>
+
+using std::vector;
+using std::set;
+using std::pair;
 
 size_t max(size_t a, size_t b) {
 	return (a > b) ? (a) : (b);
 }
 
+void debug(const std::string& s) {
+	std::cout << s << '\n';
+}
+
 class Point;
 class PPM;
 
-typedef std::vector<Point> Points;
-typedef Points Means;
-typedef Points Cluster;
-typedef std::vector<Cluster> Clusters;
+typedef pair<Point, int> PointClassification;
 typedef struct {
 	int r, g, b;
 } Pixel;
@@ -81,11 +87,34 @@ class Point {
 		/**
 		 * Returns the index within the input vector of the closest mean
 		 */
-		int classify(const Means& means) const {
+		int classify(const vector<Point>& means) const {
 			int closestIndex = 0;
 			double closestDistanceSquared = calculateDistanceSquared(means[0]);
 			for (size_t index = 1; index < means.size(); index++) {
 				// Assume all means have the same dimension as this point
+				double distanceSquared = calculateDistanceSquared(means[index]);
+				if (distanceSquared < closestDistanceSquared) {
+					closestIndex = index;
+					closestDistanceSquared = distanceSquared;
+				}
+			}
+
+			return closestIndex;
+		}
+
+		/**
+		 * Classifies a point from a list of means and a set of which indexes are valid.
+		 * If there is only one valid index, we can save some time by instantly returning
+		 * that index.
+		 */
+		int classifyFromValidIndexes(const vector<Point>& means, const set<int>& validIndexes) const {
+			if (validIndexes.size() == 0) {
+				return *validIndexes.begin();
+			}
+
+			int closestIndex = -1;
+			double closestDistanceSquared = 100;
+			for (auto index : validIndexes) {
 				double distanceSquared = calculateDistanceSquared(means[index]);
 				if (distanceSquared < closestDistanceSquared) {
 					closestIndex = index;
@@ -274,7 +303,7 @@ class PPM {
 		int getWidth() const { return width; }
 		int getHeight() const { return height; }
 
-		void getAllPixelColors(std::vector<Point>& colors) const {
+		void getAllPixelColors(vector<Point>& colors) const {
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
 					const Pixel pixel = pixels[y][x];
@@ -299,6 +328,9 @@ class PPM {
 		friend std::istream& operator>>(std::istream& stream, PPM& ppm);
 };
 
+/**
+ * Reads a PPM file from a stream
+ */
 std::istream& operator>>(std::istream& stream, PPM& ppm) {
 	stream.ignore(2); // "P3"
 	int maxActivation = 0, r, g, b;
@@ -315,6 +347,9 @@ std::istream& operator>>(std::istream& stream, PPM& ppm) {
 	return stream;
 }
 
+/**
+ * Writes a PPM file to a stream
+ */
 std::ostream& operator<<(std::ostream& stream, const PPM& ppm) {
 	// PPM header
 	stream << "P3 ";
@@ -342,16 +377,21 @@ int cycleForward(int x, int max) {
 	return (x + 1) % max;
 }
 
+void removeFromSet(set<int>& removeFrom, const set<int>& toRemove) {
+	for (int a : toRemove) removeFrom.erase(a);
+}
+
 class KDTreeNode {
 	private:
 		const int axis;
 		const int dimensionCount;
 		KDTreeNode *gt = nullptr, *lt = nullptr;
 		Point value;
+		Point lastClassification = Point(-1, -1);
 		Bounds boundaries;
 		bool hasValue = false;
 
-		KDTreeNode(int dimensionCount, int axis, Bounds boundaries, Point &value):
+		KDTreeNode(int dimensionCount, int axis, Bounds boundaries, const Point &value):
 			dimensionCount(dimensionCount),
 			axis(axis),
 			value(value),
@@ -383,7 +423,7 @@ class KDTreeNode {
 			return s;
 		}
 
-		void addPoint(Point &pointToAdd) {
+		void addPoint(const Point &pointToAdd) {
 			if (!hasValue) {
 				this->value = pointToAdd;
 				hasValue = true;
@@ -391,7 +431,7 @@ class KDTreeNode {
 				bool isGreaterThanBreakpoint = pointToAdd[axis] > this->value[axis];
 				if (isGreaterThanBreakpoint) {
 					if (gt == nullptr) {
-						int nextAxis = cycleForward(this->axis, pointToAdd.getDimensionCount());
+						int nextAxis = cycleForward(axis, pointToAdd.getDimensionCount());
 
 						gt = new KDTreeNode(
 							dimensionCount,
@@ -404,7 +444,7 @@ class KDTreeNode {
 					}
 				} else {
 					if (lt == nullptr) {
-						int nextAxis = cycleForward(this->axis, pointToAdd.getDimensionCount());
+						int nextAxis = cycleForward(axis, pointToAdd.getDimensionCount());
 						
 						lt = new KDTreeNode(
 							dimensionCount,
@@ -458,6 +498,59 @@ class KDTreeNode {
 				lt->printTree(indent + 2);
 			}
 		}
+
+		void getDominatedMeanIndexesToSet(
+			set<int>& dominatedIndexes,
+			const set<int>& validIndexes,
+			const vector<Point>& means)
+		{
+			if (validIndexes.size() == 0) {
+				// Impossible for any to be dominated
+				return;
+			}
+
+			for (auto first = validIndexes.begin(); first != validIndexes.end(); first++) {
+				for (auto second = std::next(first); second != validIndexes.end(); second++) {
+					int dominant = boundaries.whichPointDominates(means[*first], means[*second]);
+					switch (dominant) {
+						case 1:
+							dominatedIndexes.insert(*second);
+							break;
+						case 2:
+							dominatedIndexes.insert(*first);
+							break;
+					}
+				}
+			}
+		}
+
+		// Fills a vector<(Point, int)>, classifications, which contains a list of each point and its corresponding mean
+		void addClassifications(
+			vector<PointClassification>& classificationList,
+			set<int> validMeanIndexes,
+			const vector<Point>& means)
+		{
+			// set<int> dominatedMeanIndexes;
+			// getDominatedMeanIndexesToSet(dominatedMeanIndexes, validMeanIndexes, means);
+			// removeFromSet(validMeanIndexes, dominatedMeanIndexes);
+			
+			if (hasValue == false) return;
+
+			// Add the classification of the point at this TreeNode
+			classificationList.push_back({
+				value, value.classifyFromValidIndexes(means, validMeanIndexes)
+			});
+
+			// Add the classification of the point at the greater-than TreeNode
+			if (gt != nullptr) {
+				gt->addClassifications(classificationList, validMeanIndexes, means);
+			}
+
+			// Add the classification of the point at the less-than TreeNode
+			if (lt != nullptr) {
+				lt->addClassifications(classificationList, validMeanIndexes, means);
+			}
+		}
 };
 
 std::ostream& operator<<(std::ostream& stream, const Point& point) {
@@ -478,42 +571,63 @@ double randomDouble() {
 	return rand() / (double)(RAND_MAX);
 }
 
-void addRandomPoints(Points& out, int n) {
+void addRandomPoints(vector<Point>& out, int n) {
 	for (int i = 0; i < n; i++) {
 		out.push_back(Point(randomDouble(), randomDouble()));
 	}
 }
 
+/**
+ * Classify a given vector of points according to the means.
+ */
 void classifyPoints(
-	std::vector<Cluster>& clusters,
-	const Points& points,
-	const Means& means
-) {
+	vector<vector<Point>>& clusters,
+	const vector<Point>& points,
+	const vector<Point>& means)
+{
 	for (Point point : points) {
 		int classification = point.classify(means);
 		clusters[classification].push_back(point);
 	}
 }
 
-Point calcMean(const Cluster& cluster) {
-	double sumX = 0;
-	double sumY = 0;
-	for (Point p : cluster) {
-		sumX += p[0];
-		sumY += p[1];
+/**
+ * Group a given vector of point classifications based on the index of the mean they were classified to.
+ * This pushes the classification to `clusters[index]`.
+ */
+void groupPointsByClassification(
+	vector<Point>*& pointsByMeanIndex,
+	const vector<PointClassification>& classifications)
+{
+	for (auto classification : classifications) {
+		Point& point = classification.first;
+		int meanIndex = classification.second;
+		pointsByMeanIndex[meanIndex].push_back(point);
 	}
-	return Point(sumX / cluster.size(), sumY / cluster.size());
 }
 
-void calcMeans(Means& out, const std::vector<Cluster>& clusters) {
-	for (Cluster cluster : clusters) {
-		out.push_back(calcMean(cluster));
+Point calculateMean(const vector<Point>& cluster) {
+	if (cluster.size() == 0) {
+		std::cout << "warn- cluster size is 0\n";
+		return Point(0, 0);
+	} else {
+		int dimensionCount = cluster.at(0).getDimensionCount();
+		double *sums = new double[dimensionCount];
+		for (const Point& point : cluster) {
+			for (int i = 0; i < dimensionCount; i++) {
+				sums[i] += point[i];
+			}
+		}
+		for (int i = 0; i < dimensionCount; i++) {
+			sums[i] = sums[i] / cluster.size();
+		}
+		return Point(sums, dimensionCount);
 	}
 }
 
 #include <iomanip>
 #include <fstream>
-void savePoints(const std::vector<Point>& points, const char* filename = "points.txt") {
+void savePoints(const vector<Point>& points, const char* filename = "points.txt") {
 	std::ofstream out(filename);
 	
 	// makes all numbers write with exactly 17 digits after the decimal point
@@ -526,12 +640,12 @@ void savePoints(const std::vector<Point>& points, const char* filename = "points
 }
 
 void generateAndSavePoints(int number = 10) {
-	std::vector<Point> points;
+	vector<Point> points;
 	addRandomPoints(points, number);
 	savePoints(points);
 }
 
-void readPoints(std::vector<Point>& output, const char* filename = "points.txt") {
+void readPointsToVector(vector<Point>& output, const char* filename = "points.txt") {
 	std::ifstream in(filename);
 	double x, y;
 	while (in >> x) {
@@ -540,39 +654,159 @@ void readPoints(std::vector<Point>& output, const char* filename = "points.txt")
 	}
 }
 
+/**
+ * Returns whether two arrays of points are equal
+ */
+bool areEqual(Point* a, Point* b, int pointCount) {
+	for (int i = 0; i < pointCount; i++) {
+		if (!(a[i] == b[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+std::ostream& operator<<(std::ostream& stream, const vector<Point>& points) {
+	// PL stands for Point List
+	stream << "PL[" << points.size() << "]";
+	for (int i = 0; i < points.size(); i++) {
+		stream << ' ' << points[i];
+		if (i + 1 < points.size()) {
+			stream << ',';
+		}
+	}
+	return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const vector<PointClassification>& classifications) {
+	// CL stands for Classification List
+	stream << "CL[" << classifications.size() << "]";
+	for (int i = 0; i < classifications.size(); i++) {
+		stream << " [" << classifications[i].first << ": " << classifications[i].second << ']';
+		if (i + 1 < classifications.size()) {
+			stream << ",";
+		}
+	}
+	return stream;
+}
+
 void part4() {
 	std::cout << "Lab 4 Part 4 - KD Trees and K Means!\n";
-	std::cout << "Would you like to generate a new file of 10 points?\n";
+	std::cout << "Would you like to generate a new file of 50 points?\n";
 	std::cout << "(Warning: Previous file will be overwritten)\n";
 	std::cout << "Choose (yes/no): ";
 	std::string answer;
 	std::cin >> answer;
 	if (answer == "yes") {
-		generateAndSavePoints(10);
+		generateAndSavePoints(50);
 	}
 
-	Points points;
-	readPoints(points);
+	vector<Point> points;
+	readPointsToVector(points);
+	debug("read points to vector");
 
 	KDTreeNode tree(2);
 
-	for (Point& point : points) {
+	for (const Point& point : points) {
 		tree.addPoint(point);
 	}
 
-	// tree.printTree();
+	debug("added points to tree");
+
+	const int K = 5;
+
+	vector<Point> means;
+	for (int i = 0; i < K; i++) {
+		means.push_back(points[i]);
+	}
+
+	set<int> validMeanIndexes;
+
+	for (int i = 0; i < K; i++) {
+		validMeanIndexes.insert(i);
+	}
+	
+	vector<Point> *clusters = new vector<Point>[K];
+	int iter = 0;
+	while (true) {
+		std::cout << "iteration #" << ++iter << ": ";
+		for (int i = 0; i < K; i++) {
+			clusters[i].clear();
+		}
+		vector<PointClassification> classificationList;
+		// Add our classifications
+		tree.addClassifications(classificationList, validMeanIndexes, means);
+		std::cout << classificationList << '\n';
+		groupPointsByClassification(clusters, classificationList);
+
+		vector<Point> meansTmp;
+		for (int i = 0; i < K; i++) {
+			Point mean = calculateMean(clusters[i]);
+			meansTmp.push_back(mean);
+
+			if (mean.getDimensionCount() == 0) {
+				std::cout << means << '\n';
+				for (int j = 0; j < K; j++) {
+					std::cout << "Cluster #" << j << ": " << clusters[j] << '\n';
+				}
+				exit(0);
+			} 
+		}
+
+		std::cout << "means:";
+		for (const Point& mean : meansTmp) {
+			std::cout << mean << "   ";
+		}
+		std::cout << '\n';
+
+		// We know we're done when nothing has changed
+		if (means == meansTmp) {
+			break;
+		} else {
+			means = meansTmp;
+		}
+	}
+	debug("reached end");
 
 	PPM ppm(800, 800);
-	tree.drawToPPM(ppm);
+	for (const Point& mean : means) {
+		ppm.drawCircle((int) (mean[0] * 800), (int) (mean[1] * 800), 3, black);
+	}
 
-	std::ofstream out("diagram.ppm");
+	const Pixel *clusterColors = new Pixel[5] {
+		red,
+		green,
+		blue,
+		orange,
+		purple
+	};
+
+	for (int i = 0; i < K; i++) {
+		vector<Point> cluster = clusters[i];
+		Point mean = means[i];
+		ppm.drawCircle((int)(mean[0] * 800), (int)(mean[1] * 800), 4, black);
+		ppm.drawCircle((int)(mean[0] * 800), (int)(mean[1] * 800), 5, black);
+
+		// std::cout << cluster.size() << ' ';
+		for (const Point& point : cluster) {
+			ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 2, clusterColors[i]);
+			std::cout << "Drawing point " << point << " with cluster " << i << '\n';
+		}
+	}
+
+	tree.drawToPPM(ppm);
+	debug("rendered ppm");
+
+	std::ofstream out("kdtree_kmeans.ppm");
 	out << ppm;
 	out.close();
+	debug("saved ppm");
 }
 
 #include <time.h>
 int main() {
-	std::srand(time(NULL));
+	int seed = 42;
+	std::srand(seed);
 
 	part4();	
 }
