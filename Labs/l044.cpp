@@ -728,14 +728,14 @@ void part4() {
 	vector<Point> *clusters = new vector<Point>[K];
 	int iter = 0;
 	while (true) {
-		std::cout << "iteration #" << ++iter << ": ";
+		// std::cout << "iteration #" << ++iter << ": ";
 		for (int i = 0; i < K; i++) {
 			clusters[i].clear();
 		}
 		vector<PointClassification> classificationList;
 		// Add our classifications
 		tree.addClassifications(classificationList, validMeanIndexes, means);
-		std::cout << classificationList << '\n';
+		// std::cout << classificationList << '\n';
 		groupPointsByClassification(clusters, classificationList);
 
 		vector<Point> meansTmp;
@@ -752,11 +752,11 @@ void part4() {
 			} 
 		}
 
-		std::cout << "means:";
-		for (const Point& mean : meansTmp) {
-			std::cout << mean << "   ";
-		}
-		std::cout << '\n';
+		// std::cout << "means:";
+		// for (const Point& mean : meansTmp) {
+		// 	std::cout << mean << "   ";
+		// }
+		// std::cout << '\n';
 
 		// We know we're done when nothing has changed
 		if (means == meansTmp) {
@@ -785,15 +785,15 @@ void part4() {
 
 		for (const Point& point : cluster) {
 			ppm.drawCircle((int)(point[0] * 800), (int)(point[1] * 800), 2, clusterColors[i]);
-			std::cout << "Drawing point " << point << " with cluster " << i << " with color <" << clusterColors[i].r << ", ";
-			std::cout << clusterColors[i].g << ", " << clusterColors[i].b << ">\n";
+			// std::cout << "Drawing point " << point << " with cluster " << i << " with color <" << clusterColors[i].r << ", ";
+			// std::cout << clusterColors[i].g << ", " << clusterColors[i].b << ">\n";
 		}
 	}
 
 	// tree.drawToPPM(ppm);
 	debug("rendered ppm");
 
-	std::ofstream out("kdtree_kmeans.ppm");
+	std::ofstream out("clusters.ppm");
 	out << ppm;
 	out.close();
 	debug("saved ppm");
