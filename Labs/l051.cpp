@@ -1,3 +1,6 @@
+// l051.cpp
+// Michael Fatemi
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
