@@ -133,7 +133,7 @@ namespace lab5 {
 		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
 		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
 		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
-		GrayscaleImage thresholded = applyThreshold(combined, 70);
+		GrayscaleImage thresholded = applyThreshold(combined, 45);
 
 		saveGrayscalePPM("imagem.ppm", thresholded);
 
