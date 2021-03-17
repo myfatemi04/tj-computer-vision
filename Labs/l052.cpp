@@ -22,25 +22,31 @@ namespace lab5 {
 	typedef byte** Filter;
 	
 	/**
-	 * hysteresis() takes an image and runs a double threshold on it. Then, any "weak" pixels
-	 * touching a "strong" pixel are automatically promoted to "strong" pixels. This process is
+	 * hysteresis() takes an image and runs a double threshold on it. Then, any "weak" edges
+	 * touching a "strong" edge are automatically promoted to "strong" edges. This process is
 	 * repeated until there are no more changes.
 	 */
-	GrayscaleImage hysteresis(GrayscaleImage image, int lowerThreshold, int upperThreshold) {
+	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold) {
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
-		GrayscaleImage newImage = GrayscaleImage { new byte*[image.height], image.width, image.height };
+		GrayscaleImage newImage = GrayscaleImage { new byte*[magnitudes.height], magnitudes.width, magnitudes.height };
 
-		for (int y = 0; y < image.height; y++) {
-			newImage.pixels[y] = new byte[image.width];
-			for (int x = 0; x < image.width; x++) {
-				byte pixelValue = image.pixels[y][x];
-				newImage.pixels[y][x] = (pixelValue > upperThreshold) + (pixelValue > lowerThreshold);
+		for (int y = 0; y < magnitudes.height; y++) {
+			newImage.pixels[y] = new byte[magnitudes.width];
+			for (int x = 0; x < magnitudes.width; x++) {
+				byte pixelValue = magnitudes.pixels[y][x];
 				if (pixelValue > upperThreshold) {
 					unvisited.insert({ x, y });
+					newImage.pixels[y][x] = 255;
+				} else if (pixelValue > lowerThreshold) {
+					newImage.pixels[y][x] = 128;
+				} else {
+					newImage.pixels[y][x] = 0;
 				}
 			}
 		}
+
+		// return newImage;
 
 		while (unvisited.size()) {
 			// Pop a location from the set
@@ -51,16 +57,16 @@ namespace lab5 {
 			// Check nearby locations. x_ and y_ represent points around the current pixel.
 			for (int x_ = x - 1; x_ <= x + 1; x_++) {
 				// Boundary check
-				if (x_ < 0 || x_ >= image.width) continue;
+				if (x_ < 0 || x_ >= magnitudes.width) continue;
 				for (int y_ = y - 1; y_ <= y + 1; y_++) {
 					// Boundary check
-					if (y_ < 0 || y_ >= image.height) continue;
+					if (y_ < 0 || y_ >= magnitudes.height) continue;
 
 					// If the current value is 1 (reached lower threshold, but not upper threshold),
 					// then because it touches a strong edge with a value of 2, it is automatically
 					// promoted. Then, we add it to the queue to update its neighbors as well.
-					if (image.pixels[y_][x_] == 1) {
-						image.pixels[y_][x_] = 2;
+					if (newImage.pixels[y_][x_] == 128) {
+						newImage.pixels[y_][x_] = 255;
 						unvisited.insert({x_, y_});
 					}
 				}
@@ -82,24 +88,22 @@ namespace lab5 {
 	 * nonMaxSuppression() looks at the magnitude and directions of each edge gradient.
 	 * If a pixel along an edge is not the strongest edge along its gradient, it is suppressed.
 	 */
-	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient) {
+	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient, GrayscaleImage magnitudes, int threshold) {
 		int width = xGradient.width;
 		int height = xGradient.height;
-
-		double **magnitudesSquared = new double*[height];
-
-		for (int y = 0; y < height; y++) {
-			magnitudesSquared[y] = new double[width];
-			for (int x = 0; x < width; x++) {
-				magnitudesSquared[y][x] = findMagnitudeSquared(yGradient.pixels[y][x], xGradient.pixels[y][x]);
-			}
-		}
 
 		byte **newPixels = new byte*[height];
 		for (int y = 0; y < height; y++) {
 			newPixels[y] = new byte[width];
 
 			for (int x = 0; x < width; x++) {
+				newPixels[y][x] = 0;
+
+				double currentMagnitude = magnitudes.pixels[y][x];
+				if (currentMagnitude < threshold) {
+					continue;
+				}
+
 				// angle is in the range [-pi, pi].
 				double angleRadians = atan2(yGradient.pixels[y][x], xGradient.pixels[y][x]);
 				double angleDegrees = angleRadians / (3.1415926535897932) / 2 * 360;
@@ -121,23 +125,17 @@ namespace lab5 {
 						dx = 1;
 					}
 				}
-				
-				bool isMax = true;
-
-				// Initialize the magnitudes, in case they are out of bounds.
-				double currMagnitudeSquared = magnitudesSquared[y][x];
 
 				if (inBounds(x + dx, y + dy, width, height)) {
-					if (currMagnitudeSquared < magnitudesSquared[y + dy][x + dx]) {
-						isMax = false;
-					} else if (inBounds(x - dx, y - dy, width, height)) {
-						if (currMagnitudeSquared < magnitudesSquared[y - dy][x - dx]) {
-							isMax = false;
+					if (currentMagnitude > magnitudes.pixels[y + dy][x + dx]) {
+						if (inBounds(x - dx, y - dy, width, height)) {
+							if (currentMagnitude > magnitudes.pixels[y - dy][x - dx]) {
+								newPixels[y][x] = 255; // (byte) sqrt(currMagnitudeSquared);
+								// std::cout << currentMagnitude << " > {" << magnitudes.pixels[y + dy][x + dx] << ", " << magnitudes.pixels[y - dy][x - dx] << "}\n";
+							}
 						}
 					}
 				}
-
-				newPixels[y][x] = isMax ? ((byte) sqrt(currMagnitudeSquared)) : 0;
 			}
 		}
 
@@ -277,12 +275,13 @@ namespace lab5 {
 	
 		GrayscaleImage xGradient = convolve(grayscale, horizontalSobel);
 		GrayscaleImage yGradient = convolve(grayscale, verticalSobel);
+		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
 		int lowerThreshold = 30;
 		int upperThreshold = 60;
 
-		GrayscaleImage afterHysteresis = hysteresis(grayscale, lowerThreshold, upperThreshold);
-		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient);
+		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 30);
 
 		saveGrayscalePPM("image_hysteresis.ppm", afterHysteresis);
 		saveGrayscalePPM("image_non_max_suppression.ppm", afterNonMaxSuppression);
