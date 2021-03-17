@@ -1,0 +1,2 @@
+wsl convert image_hysteresis.ppm image_hysteresis.png
+wsl convert image_non_max_suppression.ppm image_non_max_suppression.png
