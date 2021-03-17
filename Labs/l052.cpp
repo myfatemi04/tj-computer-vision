@@ -162,7 +162,6 @@ namespace lab5 {
 				int total = 0;
 				for (int relativeX = -1; relativeX <= 1; relativeX++) {
 					for (int relativeY = -1; relativeY <= 1; relativeY++) {
-						// std::cout << "Accessing pixel " << x + relativeX << ", " << y + relativeY << '\n';
 						total += image.pixels[y + relativeY][x + relativeX] * filter[relativeY + 1][relativeX + 1];
 					}
 				}
@@ -177,7 +176,7 @@ namespace lab5 {
 		for (int y = 0; y < first.height; y++) {
 			pixels[y] = new byte[first.width];
 			for (int x = 0; x < first.width; x++) {
-				pixels[y][x] = (int) sqrt(first.pixels[y][x] * first.pixels[y][x] + second.pixels[y][x] * second.pixels[y][x]);
+				pixels[y][x] = (byte) sqrt(findMagnitudeSquared(first.pixels[y][x], second.pixels[y][x]));
 			}
 		}
 
@@ -220,7 +219,6 @@ namespace lab5 {
 			pixels[y] = new byte[image.width];
 			for (int x = 0; x < image.width; x++) {
 				pixels[y][x] = (image.pixels[y][x][0] + image.pixels[y][x][1] + image.pixels[y][x][2]) / 3;
-				// std::cout << "(" << image.pixels[y][x][0] << ", " << image.pixels[y][x][1] << ", " << image.pixels[y][x][2] << ")\n";
 			}
 		}
 		return { pixels, image.width, image.height };
@@ -260,13 +258,38 @@ namespace lab5 {
 		GrayscaleImage thresholded = applyThreshold(combined, 45);
 
 		saveGrayscalePPM("imagem.ppm", thresholded);
+	}
 
-		// saveGrayscalePPM("imagehf.ppm", horizontalFiltered);
-		// saveGrayscalePPM("imagevf.ppm", verticalFiltered);
+	void part2() {
+		ColorImage image = loadColorPPM("image.ppm");
+		GrayscaleImage grayscale = convertToGrayscale(image);
+
+		Filter horizontalSobel = new byte*[3] {
+			new byte[3] {  1,  2,  1 },
+			new byte[3] {  0,  0,  0 },
+			new byte[3] { -1, -2, -1 }
+		};
+		Filter verticalSobel = new byte*[3] {
+			new byte[3] {  1,  0, -1 },
+			new byte[3] {  2,  0, -2 },
+			new byte[3] {  1,  0, -1 }
+		};
+	
+		GrayscaleImage xGradient = convolve(grayscale, horizontalSobel);
+		GrayscaleImage yGradient = convolve(grayscale, verticalSobel);
+
+		int lowerThreshold = 30;
+		int upperThreshold = 60;
+
+		GrayscaleImage afterHysteresis = hysteresis(grayscale, lowerThreshold, upperThreshold);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient);
+
+		saveGrayscalePPM("image_hysteresis.ppm", afterHysteresis);
+		saveGrayscalePPM("image_non_max_suppression.ppm", afterNonMaxSuppression);
 	}
 }
 
 
 int main() {
-	lab5::part1();	
+	lab5::part2();	
 }
