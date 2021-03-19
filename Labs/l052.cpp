@@ -100,6 +100,7 @@ namespace lab5 {
 				newPixels[y][x] = 0;
 
 				double currentMagnitude = magnitudes.pixels[y][x];
+
 				if (currentMagnitude < threshold) {
 					continue;
 				}
@@ -125,6 +126,8 @@ namespace lab5 {
 						dx = 1;
 					}
 				}
+				
+				// std::cout << angleDegrees << ": " << dx << ", " << dy << '\n';
 
 				if (inBounds(x + dx, y + dy, width, height)) {
 					if (currentMagnitude > magnitudes.pixels[y + dy][x + dx]) {
@@ -239,52 +242,87 @@ namespace lab5 {
 		GrayscaleImage grayscale = convertToGrayscale(image);
 		saveGrayscalePPM("imageg.ppm", grayscale);
 
-		Filter horizontalSobel = new byte*[3] {
+		Filter verticalSobel = new byte*[3] {
 			new byte[3] {  1,  2,  1 },
 			new byte[3] {  0,  0,  0 },
 			new byte[3] { -1, -2, -1 }
 		};
-		Filter verticalSobel = new byte*[3] {
+		Filter horizontalSobel = new byte*[3] {
 			new byte[3] {  1,  0, -1 },
 			new byte[3] {  2,  0, -2 },
 			new byte[3] {  1,  0, -1 }
 		};
 
-		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
 		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
+		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
 		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
 		GrayscaleImage thresholded = applyThreshold(combined, 45);
 
 		saveGrayscalePPM("imagem.ppm", thresholded);
 	}
 
+	void divideInPlace(GrayscaleImage image, byte amount) {
+		for (int y = 0; y < image.height; y++) {
+			for (int x = 0; x < image.width; x++) {
+				image.pixels[y][x] = (byte) (image.pixels[y][x] / amount);
+			}
+		}
+	}
+
+	GrayscaleImage combineImages(GrayscaleImage afterHysteresis, GrayscaleImage afterNonMaxSuppression) {
+		GrayscaleImage newImage = { new byte*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height };
+
+		for (int y = 0; y < afterHysteresis.height; y++) {
+			newImage.pixels[y] = new byte[afterHysteresis.width];
+			for (int x = 0; x < afterHysteresis.width; x++) {
+				if (afterHysteresis.pixels[y][x] > 128 && afterNonMaxSuppression.pixels[y][x] != 0) {
+					newImage.pixels[y][x] = 255;
+				} else {
+					newImage.pixels[y][x] = 0;
+				}
+			}
+		}
+
+		return newImage;
+	}
+
 	void part2() {
 		ColorImage image = loadColorPPM("image.ppm");
 		GrayscaleImage grayscale = convertToGrayscale(image);
 
-		Filter horizontalSobel = new byte*[3] {
+		Filter verticalSobel = new byte*[3] {
 			new byte[3] {  1,  2,  1 },
 			new byte[3] {  0,  0,  0 },
 			new byte[3] { -1, -2, -1 }
 		};
-		Filter verticalSobel = new byte*[3] {
+		Filter horizontalSobel = new byte*[3] {
 			new byte[3] {  1,  0, -1 },
 			new byte[3] {  2,  0, -2 },
 			new byte[3] {  1,  0, -1 }
 		};
+		Filter gaussian = new byte*[3] {
+			new byte[3] { 1, 2, 1 },
+			new byte[3] { 2, 4, 2 },
+			new byte[3] { 1, 2, 1 },
+		};
 	
-		GrayscaleImage xGradient = convolve(grayscale, horizontalSobel);
-		GrayscaleImage yGradient = convolve(grayscale, verticalSobel);
+		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
+		// divideInPlace(afterGaussian, 16);
+		GrayscaleImage xGradient = convolve(afterGaussian, horizontalSobel);
+		GrayscaleImage yGradient = convolve(afterGaussian, verticalSobel);
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
-		int lowerThreshold = 30;
-		int upperThreshold = 60;
+		int lowerThreshold = 10;
+		int upperThreshold = 30;
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
-		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 30);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 10);
+		GrayscaleImage finalResult = combineImages(afterHysteresis, afterNonMaxSuppression);
 
+		saveGrayscalePPM("image_magnitudes.ppm", magnitudes);
 		saveGrayscalePPM("image_hysteresis.ppm", afterHysteresis);
 		saveGrayscalePPM("image_non_max_suppression.ppm", afterNonMaxSuppression);
+		saveGrayscalePPM("image_combined.ppm", finalResult);
 	}
 }
 
