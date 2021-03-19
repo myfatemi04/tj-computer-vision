@@ -1,4 +1,4 @@
-// l051.cpp
+// l052.cpp
 // Michael Fatemi
 
 #include <iostream>
@@ -237,30 +237,6 @@ namespace lab5 {
 		return { pixels, image.width, image.height };
 	}
 
-	void part1() {
-		ColorImage image = loadColorPPM("image.ppm");
-		GrayscaleImage grayscale = convertToGrayscale(image);
-		saveGrayscalePPM("imageg.ppm", grayscale);
-
-		Filter verticalSobel = new byte*[3] {
-			new byte[3] {  1,  2,  1 },
-			new byte[3] {  0,  0,  0 },
-			new byte[3] { -1, -2, -1 }
-		};
-		Filter horizontalSobel = new byte*[3] {
-			new byte[3] {  1,  0, -1 },
-			new byte[3] {  2,  0, -2 },
-			new byte[3] {  1,  0, -1 }
-		};
-
-		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
-		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
-		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
-		GrayscaleImage thresholded = applyThreshold(combined, 45);
-
-		saveGrayscalePPM("imagem.ppm", thresholded);
-	}
-
 	void divideInPlace(GrayscaleImage image, byte amount) {
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
@@ -284,6 +260,30 @@ namespace lab5 {
 		}
 
 		return newImage;
+	}
+
+	void part1() {
+		ColorImage image = loadColorPPM("image.ppm");
+		GrayscaleImage grayscale = convertToGrayscale(image);
+		saveGrayscalePPM("imageg.ppm", grayscale);
+
+		Filter verticalSobel = new byte*[3] {
+			new byte[3] {  1,  2,  1 },
+			new byte[3] {  0,  0,  0 },
+			new byte[3] { -1, -2, -1 }
+		};
+		Filter horizontalSobel = new byte*[3] {
+			new byte[3] {  1,  0, -1 },
+			new byte[3] {  2,  0, -2 },
+			new byte[3] {  1,  0, -1 }
+		};
+
+		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
+		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
+		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
+		GrayscaleImage thresholded = applyThreshold(combined, 45);
+
+		saveGrayscalePPM("imagem.ppm", thresholded);
 	}
 
 	void part2() {
@@ -319,10 +319,10 @@ namespace lab5 {
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 10);
 		GrayscaleImage finalResult = combineImages(afterHysteresis, afterNonMaxSuppression);
 
-		saveGrayscalePPM("image_magnitudes.ppm", magnitudes);
-		saveGrayscalePPM("image_hysteresis.ppm", afterHysteresis);
-		saveGrayscalePPM("image_non_max_suppression.ppm", afterNonMaxSuppression);
-		saveGrayscalePPM("image_combined.ppm", finalResult);
+		// saveGrayscalePPM("image_magnitudes.ppm", magnitudes);
+		saveGrayscalePPM("image1.ppm", afterNonMaxSuppression);
+		saveGrayscalePPM("image2.ppm", afterHysteresis);
+		saveGrayscalePPM("imagef.ppm", finalResult);
 	}
 }
 
