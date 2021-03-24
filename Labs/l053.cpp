@@ -502,7 +502,7 @@ namespace graphicsutil {
 		return arr;
 	}
 	
-	int ** make2DintArray(int dim1, int dim2) {
+	int ** make2DIntArray(int dim1, int dim2) {
 		int ** arr = new int*[dim1];
 		for (int i = 0; i < dim1; i++) {
 			arr[i] = new int[dim2];
@@ -533,6 +533,20 @@ namespace lab6 {
 			votes[cy][cx]++;
 			it.step(-1);
 		}
+	}
+
+	int** castVotes(lab5::GrayscaleImage edges, double **angles) {
+		int **votes = graphicsutil::make2DIntArray(edges.height, edges.width);
+
+		for (int y = 0; y < edges.width; y++) {
+			for (int x = 0; x < edges.height; x++) {
+				if (edges.pixels[y][x]) {
+					castVotesForOnePixel(votes, x, y, edges.width, edges.height, angles[y][x]);
+				}
+			}
+		}
+
+		return votes;
 	}
 }
 
