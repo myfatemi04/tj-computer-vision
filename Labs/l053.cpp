@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cmath>
 #include <set>
+#include <vector>
 
 namespace lab5 {
 	typedef int byte;
@@ -275,14 +276,14 @@ namespace lab5 {
 		saveGrayscalePPM("imageg.ppm", grayscale);
 
 		Filter verticalSobel = new byte*[3] {
-			new byte[3] {  1,  2,  1 },
-			new byte[3] {  0,  0,  0 },
+			new byte[3] {	1,	2,	1 },
+			new byte[3] {	0,	0,	0 },
 			new byte[3] { -1, -2, -1 }
 		};
 		Filter horizontalSobel = new byte*[3] {
-			new byte[3] {  1,  0, -1 },
-			new byte[3] {  2,  0, -2 },
-			new byte[3] {  1,  0, -1 }
+			new byte[3] {	1,	0, -1 },
+			new byte[3] {	2,	0, -2 },
+			new byte[3] {	1,	0, -1 }
 		};
 
 		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
@@ -298,14 +299,14 @@ namespace lab5 {
 		GrayscaleImage grayscale = convertToGrayscale(image);
 
 		Filter verticalSobel = new byte*[3] {
-			new byte[3] {  1,  2,  1 },
-			new byte[3] {  0,  0,  0 },
+			new byte[3] {	1,	2,	1 },
+			new byte[3] {	0,	0,	0 },
 			new byte[3] { -1, -2, -1 }
 		};
 		Filter horizontalSobel = new byte*[3] {
-			new byte[3] {  1,  0, -1 },
-			new byte[3] {  2,  0, -2 },
-			new byte[3] {  1,  0, -1 }
+			new byte[3] {	1,	0, -1 },
+			new byte[3] {	2,	0, -2 },
+			new byte[3] {	1,	0, -1 }
 		};
 		Filter gaussian = new byte*[3] {
 			new byte[3] { 1, 2, 1 },
@@ -335,9 +336,9 @@ namespace lab5 {
 	Filter getHorizontalSobel() {
 		if (horizontalSobel == nullptr) {
 			horizontalSobel = new byte*[3] {
-				new byte[3] {  1,  0, -1 },
-				new byte[3] {  2,  0, -2 },
-				new byte[3] {  1,  0, -1 }
+				new byte[3] {	1,	0, -1 },
+				new byte[3] {	2,	0, -2 },
+				new byte[3] {	1,	0, -1 }
 			};
 		}
 
@@ -347,8 +348,8 @@ namespace lab5 {
 	Filter getVerticalSobel() {
 		if (verticalSobel == nullptr) {
 			verticalSobel = new byte*[3] {
-				new byte[3] {  1,  2,  1 },
-				new byte[3] {  0,  0,  0 },
+				new byte[3] {	1,	2,	1 },
+				new byte[3] {	0,	0,	0 },
 				new byte[3] { -1, -2, -1 }
 			};
 		}
@@ -402,7 +403,7 @@ namespace lab5 {
 }
 
 namespace graphicsutil {
-	class BresenhamDrawer {
+	class BresenhamPixelIterator {
 		private:
 			int startX, startY;
 			int currentX, currentY;
@@ -411,7 +412,7 @@ namespace graphicsutil {
 			bool iterateOverX;
 			
 		public:
-			BresenhamDrawer(int startX, int startY, double angle): startX(startX), startY(startY), angle(angle) {
+			BresenhamPixelIterator(int startX, int startY, double angle): startX(startX), startY(startY), angle(angle) {
 				currentX = startX;
 				currentY = startY;
 				buildup = 0;
@@ -447,6 +448,46 @@ namespace graphicsutil {
 				}
 			}
 		};
+
+	std::vector<std::pair<int, int>> projectCirclePixels(int centerX, int centerY, double radius) {
+		// starts with the topmost point
+		int x = 0;
+		int y = round(radius);
+
+		int y2 = y * y;
+		int y2_new = y2;
+
+		int two_y = 2 * y - 1;
+
+		std::vector<std::pair<int, int>> pixels;
+
+		while (y >= x) {
+			// when X increases, see if the Y value should decrease.
+			if ((y2 - y2_new) >= two_y) {
+				y2 -= two_y;
+
+				// decrease Y and 2Y
+				y -= 1;
+				two_y -= 2;
+			}
+
+			pixels.push_back({ x + centerX, y + centerY });
+			pixels.push_back({ x + centerX, -y + centerY });
+			pixels.push_back({ -x + centerX, y + centerY });
+			pixels.push_back({ -x + centerX, -y + centerY });
+
+			pixels.push_back({ y + centerX, x + centerY });
+			pixels.push_back({ y + centerX, -x + centerY });
+			pixels.push_back({ -y + centerX, x + centerY });
+			pixels.push_back({ -y + centerX, -x + centerY });
+
+			y2_new -= 2 * x - 3;
+
+			x += 1;
+		}
+
+		return pixels;
+	}
 }
 
 namespace lab6 {
