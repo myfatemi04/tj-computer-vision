@@ -1,4 +1,4 @@
-// l052.cpp
+// l053.cpp
 // Michael Fatemi
 
 #include <iostream>
@@ -19,7 +19,14 @@ namespace lab5 {
 		int width, height;
 	} GrayscaleImage;
 
+	typedef struct {
+		GrayscaleImage edges;
+		double** angles;
+	} EdgeDetectionResult;
+
 	typedef byte** Filter;
+
+	Filter verticalSobel = nullptr, horizontalSobel = nullptr;
 	
 	/**
 	 * hysteresis() takes an image and runs a double threshold on it. Then, any "weak" edges
@@ -324,8 +331,80 @@ namespace lab5 {
 		saveGrayscalePPM("image2.ppm", afterHysteresis);
 		saveGrayscalePPM("imagef.ppm", finalResult);
 	}
+
+	Filter getHorizontalSobel() {
+		if (horizontalSobel == nullptr) {
+			horizontalSobel = new byte*[3] {
+				new byte[3] {  1,  0, -1 },
+				new byte[3] {  2,  0, -2 },
+				new byte[3] {  1,  0, -1 }
+			};
+		}
+
+		return horizontalSobel;
+	}
+
+	Filter getVerticalSobel() {
+		if (verticalSobel == nullptr) {
+			verticalSobel = new byte*[3] {
+				new byte[3] {  1,  2,  1 },
+				new byte[3] {  0,  0,  0 },
+				new byte[3] { -1, -2, -1 }
+			};
+		}
+
+		return verticalSobel;
+	}
+
+	/**
+	 * Returns a 2D array of radian angle measures with the same dimensions as the input images.
+	 */
+	double ** getEdgeAnglesFromGradients(GrayscaleImage xGradient, GrayscaleImage yGradient) {
+		double ** measures = new double*[xGradient.height];
+		for (int y = 0; y < xGradient.height; y++) {
+			measures[y] = new double[xGradient.width];
+			for (int x = 0; x < xGradient.width; x++) {
+				measures[y][x] = atan2(yGradient.pixels[y][x], xGradient.pixels[y][x]);
+			}
+		}
+
+		return measures;
+	}
+
+	/**
+	 * detectEdges() detects the edges of an image.
+	 * @param grayscale The grayscale input image
+	 * @param lowerThreshold The lower threshold to use for hysteresis (Weak edge)
+	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
+	 */
+	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
+		Filter gaussian = new byte*[3] {
+			new byte[3] { 1, 2, 1 },
+			new byte[3] { 2, 4, 2 },
+			new byte[3] { 1, 2, 1 },
+		};
+	
+		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
+		// divideInPlace(afterGaussian, 16);
+		GrayscaleImage xGradient = convolve(afterGaussian, getHorizontalSobel());
+		GrayscaleImage yGradient = convolve(afterGaussian, getVerticalSobel());
+		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
+
+		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 10);
+
+		EdgeDetectionResult result;
+		result.edges = combineImages(afterHysteresis, afterNonMaxSuppression);
+		result.angles = getEdgeAnglesFromGradients(xGradient, yGradient);
+		
+		return result;
+	}
+}
+
+namespace lab6 {
+	//
 }
 
 int main() {
-	lab5::part2();	
+	
 }
