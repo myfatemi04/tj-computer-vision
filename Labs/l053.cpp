@@ -420,6 +420,12 @@ namespace graphicsutil {
 				iterateOverX = abs(cos(angle)) > abs(sin(angle));
 			}
 
+			void reset() {
+				currentX = startX;
+				currentY = startY;
+				buildup = 0;
+			}
+
 			int getX() const {
 				return currentX;
 			}
