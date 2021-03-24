@@ -8,15 +8,13 @@
 #include <vector>
 
 namespace lab5 {
-	typedef int byte;
-
 	typedef struct {
-		byte*** pixels;
+		int*** pixels;
 		int width, height;
 	} ColorImage;
 
 	typedef struct {
-		byte** pixels;
+		int** pixels;
 		int width, height;
 	} GrayscaleImage;
 
@@ -25,7 +23,7 @@ namespace lab5 {
 		double** angles;
 	} EdgeDetectionResult;
 
-	typedef byte** Filter;
+	typedef int** Filter;
 
 	Filter verticalSobel = nullptr, horizontalSobel = nullptr;
 	
@@ -37,12 +35,12 @@ namespace lab5 {
 	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold) {
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
-		GrayscaleImage newImage = GrayscaleImage { new byte*[magnitudes.height], magnitudes.width, magnitudes.height };
+		GrayscaleImage newImage = GrayscaleImage { new int*[magnitudes.height], magnitudes.width, magnitudes.height };
 
 		for (int y = 0; y < magnitudes.height; y++) {
-			newImage.pixels[y] = new byte[magnitudes.width];
+			newImage.pixels[y] = new int[magnitudes.width];
 			for (int x = 0; x < magnitudes.width; x++) {
-				byte pixelValue = magnitudes.pixels[y][x];
+				int pixelValue = magnitudes.pixels[y][x];
 				if (pixelValue > upperThreshold) {
 					unvisited.insert({ x, y });
 					newImage.pixels[y][x] = 255;
@@ -100,9 +98,9 @@ namespace lab5 {
 		int width = xGradient.width;
 		int height = xGradient.height;
 
-		byte **newPixels = new byte*[height];
+		int **newPixels = new int*[height];
 		for (int y = 0; y < height; y++) {
-			newPixels[y] = new byte[width];
+			newPixels[y] = new int[width];
 
 			for (int x = 0; x < width; x++) {
 				newPixels[y][x] = 0;
@@ -141,7 +139,7 @@ namespace lab5 {
 					if (currentMagnitude > magnitudes.pixels[y + dy][x + dx]) {
 						if (inBounds(x - dx, y - dy, width, height)) {
 							if (currentMagnitude > magnitudes.pixels[y - dy][x - dx]) {
-								newPixels[y][x] = 255; // (byte) sqrt(currMagnitudeSquared);
+								newPixels[y][x] = 255; // (int) sqrt(currMagnitudeSquared);
 								// std::cout << currentMagnitude << " > {" << magnitudes.pixels[y + dy][x + dx] << ", " << magnitudes.pixels[y - dy][x - dx] << "}\n";
 							}
 						}
@@ -154,9 +152,9 @@ namespace lab5 {
 	}
 
 	GrayscaleImage convolve(GrayscaleImage image, Filter filter) {
-		auto pixels = new byte*[image.height];
+		auto pixels = new int*[image.height];
 		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new byte[image.width];
+			pixels[y] = new int[image.width];
 			pixels[y][0] = 0;
 			pixels[y][image.width - 1] = 0;
 		}
@@ -181,11 +179,11 @@ namespace lab5 {
 	}
 
 	GrayscaleImage combineSobel(GrayscaleImage first, GrayscaleImage second) {
-		byte** pixels = new byte*[first.height];
+		int** pixels = new int*[first.height];
 		for (int y = 0; y < first.height; y++) {
-			pixels[y] = new byte[first.width];
+			pixels[y] = new int[first.width];
 			for (int x = 0; x < first.width; x++) {
-				pixels[y][x] = (byte) sqrt(findMagnitudeSquared(first.pixels[y][x], second.pixels[y][x]));
+				pixels[y][x] = (int) sqrt(findMagnitudeSquared(first.pixels[y][x], second.pixels[y][x]));
 			}
 		}
 
@@ -210,11 +208,11 @@ namespace lab5 {
 		handle >> _ppmtype;
 		int width, height, _max;
 		handle >> width >> height >> _max;
-		auto pixels = new byte**[height];
+		auto pixels = new int**[height];
 		for (int y = 0; y < height; y++) {
-			pixels[y] = new byte*[width];
+			pixels[y] = new int*[width];
 			for (int x = 0; x < width; x++) {
-				pixels[y][x] = new byte[3];
+				pixels[y][x] = new int[3];
 				handle >> pixels[y][x][0] >> pixels[y][x][1] >> pixels[y][x][2];
 			}
 		}
@@ -223,9 +221,9 @@ namespace lab5 {
 	}
 
 	GrayscaleImage convertToGrayscale(ColorImage image) {
-		byte** pixels = new byte*[image.height];
+		int** pixels = new int*[image.height];
 		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new byte[image.width];
+			pixels[y] = new int[image.width];
 			for (int x = 0; x < image.width; x++) {
 				pixels[y][x] = (image.pixels[y][x][0] + image.pixels[y][x][1] + image.pixels[y][x][2]) / 3;
 			}
@@ -234,9 +232,9 @@ namespace lab5 {
 	}
 
 	GrayscaleImage applyThreshold(GrayscaleImage image, double threshold) {
-		byte** pixels = new byte*[image.height];
+		int** pixels = new int*[image.height];
 		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new byte[image.width];
+			pixels[y] = new int[image.width];
 			for (int x = 0; x < image.width; x++) {
 				pixels[y][x] = image.pixels[y][x] >= threshold ? 255 : 0;
 			}
@@ -245,19 +243,19 @@ namespace lab5 {
 		return { pixels, image.width, image.height };
 	}
 
-	void divideInPlace(GrayscaleImage image, byte amount) {
+	void divideInPlace(GrayscaleImage image, int amount) {
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
-				image.pixels[y][x] = (byte) (image.pixels[y][x] / amount);
+				image.pixels[y][x] = (int) (image.pixels[y][x] / amount);
 			}
 		}
 	}
 
 	GrayscaleImage combineImages(GrayscaleImage afterHysteresis, GrayscaleImage afterNonMaxSuppression) {
-		GrayscaleImage newImage = { new byte*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height };
+		GrayscaleImage newImage = { new int*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height };
 
 		for (int y = 0; y < afterHysteresis.height; y++) {
-			newImage.pixels[y] = new byte[afterHysteresis.width];
+			newImage.pixels[y] = new int[afterHysteresis.width];
 			for (int x = 0; x < afterHysteresis.width; x++) {
 				if (afterHysteresis.pixels[y][x] > 128 && afterNonMaxSuppression.pixels[y][x] != 0) {
 					newImage.pixels[y][x] = 255;
@@ -275,15 +273,15 @@ namespace lab5 {
 		GrayscaleImage grayscale = convertToGrayscale(image);
 		saveGrayscalePPM("imageg.ppm", grayscale);
 
-		Filter verticalSobel = new byte*[3] {
-			new byte[3] {	1,	2,	1 },
-			new byte[3] {	0,	0,	0 },
-			new byte[3] { -1, -2, -1 }
+		Filter verticalSobel = new int*[3] {
+			new int[3] {	1,	2,	1 },
+			new int[3] {	0,	0,	0 },
+			new int[3] { -1, -2, -1 }
 		};
-		Filter horizontalSobel = new byte*[3] {
-			new byte[3] {	1,	0, -1 },
-			new byte[3] {	2,	0, -2 },
-			new byte[3] {	1,	0, -1 }
+		Filter horizontalSobel = new int*[3] {
+			new int[3] {	1,	0, -1 },
+			new int[3] {	2,	0, -2 },
+			new int[3] {	1,	0, -1 }
 		};
 
 		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
@@ -298,20 +296,20 @@ namespace lab5 {
 		ColorImage image = loadColorPPM("image.ppm");
 		GrayscaleImage grayscale = convertToGrayscale(image);
 
-		Filter verticalSobel = new byte*[3] {
-			new byte[3] {	1,	2,	1 },
-			new byte[3] {	0,	0,	0 },
-			new byte[3] { -1, -2, -1 }
+		Filter verticalSobel = new int*[3] {
+			new int[3] {	1,	2,	1 },
+			new int[3] {	0,	0,	0 },
+			new int[3] { -1, -2, -1 }
 		};
-		Filter horizontalSobel = new byte*[3] {
-			new byte[3] {	1,	0, -1 },
-			new byte[3] {	2,	0, -2 },
-			new byte[3] {	1,	0, -1 }
+		Filter horizontalSobel = new int*[3] {
+			new int[3] {	1,	0, -1 },
+			new int[3] {	2,	0, -2 },
+			new int[3] {	1,	0, -1 }
 		};
-		Filter gaussian = new byte*[3] {
-			new byte[3] { 1, 2, 1 },
-			new byte[3] { 2, 4, 2 },
-			new byte[3] { 1, 2, 1 },
+		Filter gaussian = new int*[3] {
+			new int[3] { 1, 2, 1 },
+			new int[3] { 2, 4, 2 },
+			new int[3] { 1, 2, 1 },
 		};
 	
 		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
@@ -335,10 +333,10 @@ namespace lab5 {
 
 	Filter getHorizontalSobel() {
 		if (horizontalSobel == nullptr) {
-			horizontalSobel = new byte*[3] {
-				new byte[3] {	1,	0, -1 },
-				new byte[3] {	2,	0, -2 },
-				new byte[3] {	1,	0, -1 }
+			horizontalSobel = new int*[3] {
+				new int[3] {	1,	0, -1 },
+				new int[3] {	2,	0, -2 },
+				new int[3] {	1,	0, -1 }
 			};
 		}
 
@@ -347,10 +345,10 @@ namespace lab5 {
 
 	Filter getVerticalSobel() {
 		if (verticalSobel == nullptr) {
-			verticalSobel = new byte*[3] {
-				new byte[3] {	1,	2,	1 },
-				new byte[3] {	0,	0,	0 },
-				new byte[3] { -1, -2, -1 }
+			verticalSobel = new int*[3] {
+				new int[3] {	1,	2,	1 },
+				new int[3] {	0,	0,	0 },
+				new int[3] { -1, -2, -1 }
 			};
 		}
 
@@ -379,10 +377,10 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		Filter gaussian = new byte*[3] {
-			new byte[3] { 1, 2, 1 },
-			new byte[3] { 2, 4, 2 },
-			new byte[3] { 1, 2, 1 },
+		Filter gaussian = new int*[3] {
+			new int[3] { 1, 2, 1 },
+			new int[3] { 2, 4, 2 },
+			new int[3] { 1, 2, 1 },
 		};
 	
 		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
@@ -494,10 +492,48 @@ namespace graphicsutil {
 
 		return pixels;
 	}
+
+	double ** make2DDoubleArray(int dim1, int dim2) {
+		double ** arr = new double*[dim1];
+		for (int i = 0; i < dim1; i++) {
+			arr[i] = new double[dim2];
+		}
+
+		return arr;
+	}
+	
+	int ** make2DintArray(int dim1, int dim2) {
+		int ** arr = new int*[dim1];
+		for (int i = 0; i < dim1; i++) {
+			arr[i] = new int[dim2];
+		}
+
+		return arr;
+	}
+
+	bool inbounds(int x, int y, int maxX, int maxY) {
+		return (x >= 0 && x < maxX) && (y >= 0 && y < maxY);
+	}
 }
 
 namespace lab6 {
-	//
+	void castVotesForOnePixel(int ** votes, int x, int y, int width, int height, double angle) {
+		using graphicsutil::inbounds;
+
+		graphicsutil::BresenhamPixelIterator it(x, y, angle);
+		int cx, cy;
+		while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
+			votes[cy][cx]++;
+			it.step(1);
+		}
+
+		it.reset();
+
+		while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
+			votes[cy][cx]++;
+			it.step(-1);
+		}
+	}
 }
 
 int main() {
