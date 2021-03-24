@@ -401,6 +401,54 @@ namespace lab5 {
 	}
 }
 
+namespace graphicsutil {
+	class BresenhamDrawer {
+		private:
+			int startX, startY;
+			int currentX, currentY;
+			double buildup;
+			double angle;
+			bool iterateOverX;
+			
+		public:
+			BresenhamDrawer(int startX, int startY, double angle): startX(startX), startY(startY), angle(angle) {
+				currentX = startX;
+				currentY = startY;
+				buildup = 0;
+				
+				iterateOverX = abs(cos(angle)) > abs(sin(angle));
+			}
+
+			int getX() const {
+				return currentX;
+			}
+
+			int getY() const {
+				return currentY;
+			}
+			
+			void step(int count) {
+				if (iterateOverX) {
+					currentX += count;
+					buildup += count * sin(angle) / cos(angle);
+					int overshoot = (int) buildup;
+					if (overshoot != 0) {
+						buildup -= overshoot;
+						currentY += overshoot;
+					}
+				} else {
+					currentY += count;
+					buildup += count * cos(angle) / sin(angle);
+					int overshoot = (int) buildup;
+					if (overshoot != 0) {
+						buildup -= overshoot;
+						currentX += overshoot;
+					}
+				}
+			}
+		};
+}
+
 namespace lab6 {
 	//
 }
