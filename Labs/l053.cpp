@@ -453,7 +453,12 @@ namespace graphicsutil {
 			}
 		};
 
-	std::vector<std::pair<int, int>> projectCirclePixels(int centerX, int centerY, double radius) {
+	/**
+	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
+	 * finding the pixels of a circle. The center must be provided as a pair of integers, but the
+	 * radius may be a decimal value.
+	 */
+	std::vector<std::pair<int, int>> getCirclePixels(int centerX, int centerY, double radius) {
 		// starts with the topmost point
 		int x = 0;
 		int y = round(radius);
@@ -564,6 +569,32 @@ namespace lab6 {
 			}
 		}
 		return centers;
+	}
+
+	/**
+	 * countEdgesForCircle counts the number of pixels along the edge of a circle.
+	 * The circle is specified by an x, y, and radius.
+	 */
+	int countEdgesForCircle(lab5::GrayscaleImage edges, int x, int y, int radius) {
+		int count = 0;
+		auto circlePixels = graphicsutil::getCirclePixels(x, y, radius);
+		for (const auto& pixel : circlePixels) {
+			int pixelX = pixel.first;
+			int pixelY = pixel.second;
+			if (edges.pixels[pixelY][pixelX] > 0) {
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	/**
+	 * findRadii returns the radii that contain a certain number of edge pixels along their
+	 * circumference.
+	 */
+	std::vector<int> findRadii(lab5::GrayscaleImage edges, int x, int y, int threshold) {
+		
 	}
 }
 
