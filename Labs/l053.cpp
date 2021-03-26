@@ -7,7 +7,7 @@
 #include <set>
 #include <vector>
 
-namespace lab5 {
+namespace tjcv {
 	typedef struct {
 		int*** pixels;
 		int width, height;
@@ -18,6 +18,172 @@ namespace lab5 {
 		int width, height;
 	} GrayscaleImage;
 
+	class BresenhamPixelIterator {
+		private:
+			int startX, startY;
+			int currentX, currentY;
+			double buildup;
+			double angle;
+			bool iterateOverX;
+			
+		public:
+			BresenhamPixelIterator(int startX, int startY, double angle): startX(startX), startY(startY), angle(angle) {
+				currentX = startX;
+				currentY = startY;
+				buildup = 0;
+				
+				iterateOverX = abs(cos(angle)) > abs(sin(angle));
+			}
+
+			void reset() {
+				currentX = startX;
+				currentY = startY;
+				buildup = 0;
+			}
+
+			int getX() const {
+				return currentX;
+			}
+
+			int getY() const {
+				return currentY;
+			}
+			
+			void step(int count) {
+				if (iterateOverX) {
+					currentX += count;
+					buildup += count * sin(angle) / cos(angle);
+					int overshoot = (int) buildup;
+					if (overshoot != 0) {
+						buildup -= overshoot;
+						currentY += overshoot;
+					}
+				} else {
+					currentY += count;
+					buildup += count * cos(angle) / sin(angle);
+					int overshoot = (int) buildup;
+					if (overshoot != 0) {
+						buildup -= overshoot;
+						currentX += overshoot;
+					}
+				}
+			}
+		};
+
+	void saveGrayscalePPM(std::string filename, GrayscaleImage image) {
+		std::ofstream handle(filename);
+		// P2 [width] [height] [max intensity]
+		handle << "P2 " << image.width << " " << image.height << " 255\n";
+		for (int y = 0; y < image.height; y++) {
+			for (int x = 0; x < image.width; x++) {
+				handle << image.pixels[y][x] << " ";
+			}
+		}
+		handle.close();
+	}
+
+	ColorImage loadColorPPM(std::string filename) {
+		std::ifstream handle(filename);
+		std::string _ppmtype;
+		handle >> _ppmtype;
+		int width, height, _max;
+		handle >> width >> height >> _max;
+		auto pixels = new int**[height];
+		for (int y = 0; y < height; y++) {
+			pixels[y] = new int*[width];
+			for (int x = 0; x < width; x++) {
+				pixels[y][x] = new int[3];
+				handle >> pixels[y][x][0] >> pixels[y][x][1] >> pixels[y][x][2];
+			}
+		}
+		handle.close();
+		return { pixels, width, height };
+	}
+
+	GrayscaleImage convertToGrayscale(ColorImage image) {
+		int** pixels = new int*[image.height];
+		for (int y = 0; y < image.height; y++) {
+			pixels[y] = new int[image.width];
+			for (int x = 0; x < image.width; x++) {
+				pixels[y][x] = (image.pixels[y][x][0] + image.pixels[y][x][1] + image.pixels[y][x][2]) / 3;
+			}
+		}
+		return { pixels, image.width, image.height };
+	}
+
+
+	/**
+	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
+	 * finding the pixels of a circle. The center must be provided as a pair of integers, but the
+	 * radius may be a decimal value.
+	 */
+	std::vector<std::pair<int, int>> getCirclePixels(int centerX, int centerY, double radius) {
+		// starts with the topmost point
+		int x = 0;
+		int y = round(radius);
+
+		int y2 = y * y;
+		int y2_new = y2;
+
+		int two_y = 2 * y - 1;
+
+		std::vector<std::pair<int, int>> pixels;
+
+		while (y >= x) {
+			// when X increases, see if the Y value should decrease.
+			if ((y2 - y2_new) >= two_y) {
+				y2 -= two_y;
+
+				// decrease Y and 2Y
+				y -= 1;
+				two_y -= 2;
+			}
+
+			pixels.push_back({ x + centerX, y + centerY });
+			pixels.push_back({ x + centerX, -y + centerY });
+			pixels.push_back({ -x + centerX, y + centerY });
+			pixels.push_back({ -x + centerX, -y + centerY });
+
+			pixels.push_back({ y + centerX, x + centerY });
+			pixels.push_back({ y + centerX, -x + centerY });
+			pixels.push_back({ -y + centerX, x + centerY });
+			pixels.push_back({ -y + centerX, -x + centerY });
+
+			y2_new -= 2 * x - 3;
+
+			x += 1;
+		}
+
+		return pixels;
+	}
+
+	double ** make2DDoubleArray(int dim1, int dim2) {
+		double ** arr = new double*[dim1];
+		for (int i = 0; i < dim1; i++) {
+			arr[i] = new double[dim2];
+		}
+
+		return arr;
+	}
+	
+	int ** make2DIntArray(int dim1, int dim2) {
+		int ** arr = new int*[dim1];
+		for (int i = 0; i < dim1; i++) {
+			arr[i] = new int[dim2];
+		}
+
+		return arr;
+	}
+
+	bool inbounds(int x, int y, int maxX, int maxY) {
+		return (x >= 0 && x < maxX) && (y >= 0 && y < maxY);
+	}
+}
+
+
+namespace lab5 {
+	using tjcv::GrayscaleImage;
+	using tjcv::ColorImage;
 	typedef struct {
 		GrayscaleImage edges;
 		double** angles;
@@ -190,47 +356,6 @@ namespace lab5 {
 		return { pixels, first.width, first.height };
 	}
 
-	void saveGrayscalePPM(std::string filename, GrayscaleImage image) {
-		std::ofstream handle(filename);
-		// P2 [width] [height] [max intensity]
-		handle << "P2 " << image.width << " " << image.height << " 255\n";
-		for (int y = 0; y < image.height; y++) {
-			for (int x = 0; x < image.width; x++) {
-				handle << image.pixels[y][x] << " ";
-			}
-		}
-		handle.close();
-	}
-
-	ColorImage loadColorPPM(std::string filename) {
-		std::ifstream handle(filename);
-		std::string _ppmtype;
-		handle >> _ppmtype;
-		int width, height, _max;
-		handle >> width >> height >> _max;
-		auto pixels = new int**[height];
-		for (int y = 0; y < height; y++) {
-			pixels[y] = new int*[width];
-			for (int x = 0; x < width; x++) {
-				pixels[y][x] = new int[3];
-				handle >> pixels[y][x][0] >> pixels[y][x][1] >> pixels[y][x][2];
-			}
-		}
-		handle.close();
-		return { pixels, width, height };
-	}
-
-	GrayscaleImage convertToGrayscale(ColorImage image) {
-		int** pixels = new int*[image.height];
-		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new int[image.width];
-			for (int x = 0; x < image.width; x++) {
-				pixels[y][x] = (image.pixels[y][x][0] + image.pixels[y][x][1] + image.pixels[y][x][2]) / 3;
-			}
-		}
-		return { pixels, image.width, image.height };
-	}
-
 	GrayscaleImage applyThreshold(GrayscaleImage image, double threshold) {
 		int** pixels = new int*[image.height];
 		for (int y = 0; y < image.height; y++) {
@@ -269,7 +394,7 @@ namespace lab5 {
 	}
 
 	void part1() {
-		ColorImage image = loadColorPPM("image.ppm");
+		ColorImage image = tjcv::loadColorPPM("image.ppm");
 		GrayscaleImage grayscale = convertToGrayscale(image);
 		saveGrayscalePPM("imageg.ppm", grayscale);
 
@@ -293,7 +418,7 @@ namespace lab5 {
 	}
 
 	void part2() {
-		ColorImage image = loadColorPPM("image.ppm");
+		ColorImage image = tjcv::loadColorPPM("image.ppm");
 		GrayscaleImage grayscale = convertToGrayscale(image);
 
 		Filter verticalSobel = new int*[3] {
@@ -400,132 +525,11 @@ namespace lab5 {
 	}
 }
 
-namespace graphicsutil {
-	class BresenhamPixelIterator {
-		private:
-			int startX, startY;
-			int currentX, currentY;
-			double buildup;
-			double angle;
-			bool iterateOverX;
-			
-		public:
-			BresenhamPixelIterator(int startX, int startY, double angle): startX(startX), startY(startY), angle(angle) {
-				currentX = startX;
-				currentY = startY;
-				buildup = 0;
-				
-				iterateOverX = abs(cos(angle)) > abs(sin(angle));
-			}
-
-			void reset() {
-				currentX = startX;
-				currentY = startY;
-				buildup = 0;
-			}
-
-			int getX() const {
-				return currentX;
-			}
-
-			int getY() const {
-				return currentY;
-			}
-			
-			void step(int count) {
-				if (iterateOverX) {
-					currentX += count;
-					buildup += count * sin(angle) / cos(angle);
-					int overshoot = (int) buildup;
-					if (overshoot != 0) {
-						buildup -= overshoot;
-						currentY += overshoot;
-					}
-				} else {
-					currentY += count;
-					buildup += count * cos(angle) / sin(angle);
-					int overshoot = (int) buildup;
-					if (overshoot != 0) {
-						buildup -= overshoot;
-						currentX += overshoot;
-					}
-				}
-			}
-		};
-
-	/**
-	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
-	 * finding the pixels of a circle. The center must be provided as a pair of integers, but the
-	 * radius may be a decimal value.
-	 */
-	std::vector<std::pair<int, int>> getCirclePixels(int centerX, int centerY, double radius) {
-		// starts with the topmost point
-		int x = 0;
-		int y = round(radius);
-
-		int y2 = y * y;
-		int y2_new = y2;
-
-		int two_y = 2 * y - 1;
-
-		std::vector<std::pair<int, int>> pixels;
-
-		while (y >= x) {
-			// when X increases, see if the Y value should decrease.
-			if ((y2 - y2_new) >= two_y) {
-				y2 -= two_y;
-
-				// decrease Y and 2Y
-				y -= 1;
-				two_y -= 2;
-			}
-
-			pixels.push_back({ x + centerX, y + centerY });
-			pixels.push_back({ x + centerX, -y + centerY });
-			pixels.push_back({ -x + centerX, y + centerY });
-			pixels.push_back({ -x + centerX, -y + centerY });
-
-			pixels.push_back({ y + centerX, x + centerY });
-			pixels.push_back({ y + centerX, -x + centerY });
-			pixels.push_back({ -y + centerX, x + centerY });
-			pixels.push_back({ -y + centerX, -x + centerY });
-
-			y2_new -= 2 * x - 3;
-
-			x += 1;
-		}
-
-		return pixels;
-	}
-
-	double ** make2DDoubleArray(int dim1, int dim2) {
-		double ** arr = new double*[dim1];
-		for (int i = 0; i < dim1; i++) {
-			arr[i] = new double[dim2];
-		}
-
-		return arr;
-	}
-	
-	int ** make2DIntArray(int dim1, int dim2) {
-		int ** arr = new int*[dim1];
-		for (int i = 0; i < dim1; i++) {
-			arr[i] = new int[dim2];
-		}
-
-		return arr;
-	}
-
-	bool inbounds(int x, int y, int maxX, int maxY) {
-		return (x >= 0 && x < maxX) && (y >= 0 && y < maxY);
-	}
-}
-
 namespace lab6 {
 	void castVotesForOnePixel(int ** votes, int x, int y, int width, int height, double angle) {
-		using graphicsutil::inbounds;
+		using tjcv::inbounds;
 
-		graphicsutil::BresenhamPixelIterator it(x, y, angle);
+		tjcv::BresenhamPixelIterator it(x, y, angle);
 		int cx, cy;
 		while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
 			votes[cy][cx]++;
@@ -541,7 +545,7 @@ namespace lab6 {
 	}
 
 	int** castVotes(lab5::GrayscaleImage edges, double **angles) {
-		int **votes = graphicsutil::make2DIntArray(edges.height, edges.width);
+		int **votes = tjcv::make2DIntArray(edges.height, edges.width);
 
 		for (int y = 0; y < edges.width; y++) {
 			for (int x = 0; x < edges.height; x++) {
@@ -577,7 +581,7 @@ namespace lab6 {
 	 */
 	int countEdgesForCircle(lab5::GrayscaleImage edges, int x, int y, int radius) {
 		int count = 0;
-		auto circlePixels = graphicsutil::getCirclePixels(x, y, radius);
+		auto circlePixels = tjcv::getCirclePixels(x, y, radius);
 		for (const auto& pixel : circlePixels) {
 			int pixelX = pixel.first;
 			int pixelY = pixel.second;
@@ -600,14 +604,14 @@ namespace lab6 {
 				radii.push_back(radius);
 			}
 		}
-		
+
 		return radii;
 	}
 }
 
 int main() {
-	auto color = lab5::loadColorPPM("image.ppm");
-	auto grayscale = lab5::convertToGrayscale(color);
+	auto color = tjcv::loadColorPPM("image.ppm");
+	auto grayscale = tjcv::convertToGrayscale(color);
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
 	auto votes = lab6::castVotes(detection.edges, detection.angles);
 }
