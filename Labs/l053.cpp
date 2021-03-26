@@ -590,11 +590,18 @@ namespace lab6 {
 	}
 
 	/**
-	 * findRadii returns the radii that contain a certain number of edge pixels along their
-	 * circumference.
+	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius).
 	 */
-	std::vector<int> findRadii(lab5::GrayscaleImage edges, int x, int y, int threshold) {
+	std::vector<int> findRadii(lab5::GrayscaleImage edges, int x, int y, int minRadius, int maxRadius, int threshold) {
+		std::vector<int> radii;
+		for (int radius = minRadius; radius < maxRadius; radius++) {
+			int edgesOnRadius = countEdgesForCircle(edges, x, y, radius);
+			if (edgesOnRadius > threshold) {
+				radii.push_back(radius);
+			}
+		}
 		
+		return radii;
 	}
 }
 
