@@ -548,8 +548,28 @@ namespace lab6 {
 
 		return votes;
 	}
+
+	/**
+	 * findCenters() returns a vector of (x, y) points. This method takes in an int**, which counts up the votes,
+	 * and a width and height, to specify the area within the int** to search. The optional threshold parameter
+	 * can be used to specify the minimum number of votes required for a point to be classified as a center.
+	 */
+	std::vector<std::pair<int, int>> findCenters(int **votes, int width, int height, int threshold = 10) {
+		std::vector<std::pair<int, int>> centers;
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				if (votes[y][x] >= threshold) {
+					centers.push_back({x, y});
+				}
+			}
+		}
+		return centers;
+	}
 }
 
 int main() {
-	
+	auto color = lab5::loadColorPPM("image.ppm");
+	auto grayscale = lab5::convertToGrayscale(color);
+	auto detection = lab5::detectEdges(grayscale, 10, 30);
+	auto votes = lab6::castVotes(detection.edges, detection.angles);
 }
