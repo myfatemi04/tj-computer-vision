@@ -236,10 +236,13 @@ namespace tjcv {
 		return arr;
 	}
 	
-	int ** make2DIntArray(int dim1, int dim2) {
-		int ** arr = new int*[dim1];
+	int **make2DIntArray(int dim1, int dim2) {
+		int **arr = new int*[dim1];
 		for (int i = 0; i < dim1; i++) {
 			arr[i] = new int[dim2];
+			for (int j = 0; j < dim2; j++) {
+				arr[i][j] = 0;
+			}
 		}
 
 		return arr;
@@ -708,7 +711,7 @@ int main() {
 	auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
 	tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
 	std::cout << "Finding centers\n";
-	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 200);
+	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 125);
 
 	int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 
@@ -719,8 +722,9 @@ int main() {
 		int x = center.first;
 		int y = center.second;
 
-		auto radii = lab6::findRadii(detection.edges, x, y, 100, 400, 200);
+		auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 150);
 		for (int radius : radii) {
+			std::cout << "Found radius " << radius << '\n';
 			auto circle = tjcv::getCirclePixels(x, y, radius);
 			for (auto circlePixel : circle) {
 				int cpX = circlePixel.first;
