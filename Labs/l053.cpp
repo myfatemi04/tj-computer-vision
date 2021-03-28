@@ -668,5 +668,22 @@ int main() {
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
 	auto votes = lab6::castVotes(detection.edges, detection.angles);
 	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 10);
+
+	int* WHITE = new int[3] { 255, 255, 255 };
+
+	for (const auto& center : centers) {
+		int x = center.first;
+		int y = center.second;
+		auto radii = lab6::findRadii(detection.edges, x, y, 10, 50, 10);
+		for (int radius : radii) {
+			auto circle = tjcv::getCirclePixels(x, y, radius);
+			for (auto circlePixel : circle) {
+				int cpX = circlePixel.first;
+				int cpY = circlePixel.second;
+				color.pixels[cpY][cpX] = WHITE;
+			}
+		}
+	}
+
 	
 }
