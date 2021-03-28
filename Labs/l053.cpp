@@ -18,6 +18,11 @@ namespace tjcv {
 		int width, height;
 	} GrayscaleImage;
 
+	typedef struct {
+		int x, y;
+		double radius;
+	} Circle;
+
 	class BresenhamPixelIterator {
 		private:
 			int startX, startY;
@@ -111,6 +116,29 @@ namespace tjcv {
 		return { pixels, image.width, image.height };
 	}
 
+	/**
+	 * This simply creates a color image by taking the gray value and using it as the R, G, and B values.
+	 */
+	ColorImage convertToColor(GrayscaleImage gray) {
+		ColorImage color;
+		color.width = gray.width;
+		color.height = gray.height;
+		color.pixels = new int**[gray.height];
+		for (int y = 0; y < gray.height; y++) {
+			color.pixels[y] = new int*[gray.width];
+			for (int x = 0; x < gray.width; x++) {
+				int intensity = gray.pixels[y][x];
+				// R, G, and B are all the same value
+				color.pixels[y][x] = new int[3] {
+					intensity,
+					intensity,
+					intensity
+				};
+			}
+		}
+
+		return color;
+	}
 
 	/**
 	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
@@ -526,6 +554,8 @@ namespace lab5 {
 }
 
 namespace lab6 {
+	using tjcv::GrayscaleImage;
+
 	void castVotesForOnePixel(int ** votes, int x, int y, int width, int height, double angle) {
 		using tjcv::inbounds;
 
@@ -544,7 +574,7 @@ namespace lab6 {
 		}
 	}
 
-	int** castVotes(lab5::GrayscaleImage edges, double **angles) {
+	int** castVotes(GrayscaleImage edges, double **angles) {
 		int **votes = tjcv::make2DIntArray(edges.height, edges.width);
 
 		for (int y = 0; y < edges.width; y++) {
@@ -579,7 +609,7 @@ namespace lab6 {
 	 * countEdgesForCircle counts the number of pixels along the edge of a circle.
 	 * The circle is specified by an x, y, and radius.
 	 */
-	int countEdgesForCircle(lab5::GrayscaleImage edges, int x, int y, int radius) {
+	int countEdgesForCircle(GrayscaleImage edges, int x, int y, int radius) {
 		int count = 0;
 		auto circlePixels = tjcv::getCirclePixels(x, y, radius);
 		for (const auto& pixel : circlePixels) {
@@ -596,7 +626,7 @@ namespace lab6 {
 	/**
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius).
 	 */
-	std::vector<int> findRadii(lab5::GrayscaleImage edges, int x, int y, int minRadius, int maxRadius, int threshold) {
+	std::vector<int> findRadii(GrayscaleImage edges, int x, int y, int minRadius, int maxRadius, int threshold) {
 		std::vector<int> radii;
 		for (int radius = minRadius; radius < maxRadius; radius++) {
 			int edgesOnRadius = countEdgesForCircle(edges, x, y, radius);
@@ -614,4 +644,5 @@ int main() {
 	auto grayscale = tjcv::convertToGrayscale(color);
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
 	auto votes = lab6::castVotes(detection.edges, detection.angles);
+	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 10);
 }
