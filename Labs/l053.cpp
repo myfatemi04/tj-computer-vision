@@ -84,7 +84,7 @@ namespace tjcv {
 				handle << image.pixels[y][x] << " ";
 			}
 		}
-		
+
 		handle.close();
 	}
 
@@ -619,8 +619,8 @@ namespace lab6 {
 	int** castVotes(GrayscaleImage edges, double **angles) {
 		int **votes = tjcv::make2DIntArray(edges.height, edges.width);
 
-		for (int y = 0; y < edges.width; y++) {
-			for (int x = 0; x < edges.height; x++) {
+		for (int y = 0; y < edges.height; y++) {
+			for (int x = 0; x < edges.width; x++) {
 				if (edges.pixels[y][x]) {
 					castVotesForOnePixel(votes, x, y, edges.width, edges.height, angles[y][x]);
 				}
@@ -657,8 +657,10 @@ namespace lab6 {
 		for (const auto& pixel : circlePixels) {
 			int pixelX = pixel.first;
 			int pixelY = pixel.second;
-			if (edges.pixels[pixelY][pixelX] > 0) {
-				count++;
+			if (tjcv::inbounds(pixelX, pixelY, edges.width, edges.height)) {
+				if (edges.pixels[pixelY][pixelX] > 0) {
+					count++;
+				}
 			}
 		}
 
@@ -679,30 +681,58 @@ namespace lab6 {
 
 		return radii;
 	}
+
+	GrayscaleImage createVotesGraph(int **votes, int width, int height) {
+		GrayscaleImage image;
+		image.width = width;
+		image.height = height;
+		image.pixels = new int*[height];
+		for (int y = 0; y < height; y++) {
+			image.pixels[y] = new int[width];
+			for (int x = 0; x < width; x++) {
+				image.pixels[y][x] = votes[y][x] < 255 ? votes[y][x] : 255;
+			}
+		}
+		return image;
+	}
 }
 
 int main() {
 	auto color = tjcv::loadColorPPM("image.ppm");
 	auto grayscale = tjcv::convertToGrayscale(color);
+	std::cout << "Detecting edges\n";
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
+	tjcv::saveGrayscalePPM("houghcircles_edges_output.ppm", detection.edges);
+	std::cout << "Casting votes\n";
 	auto votes = lab6::castVotes(detection.edges, detection.angles);
-	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 10);
+	auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
+	tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
+	std::cout << "Finding centers\n";
+	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 200);
 
-	int* WHITE = new int[3] { 255, 255, 255 };
+	int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 
-	for (const auto& center : centers) {
+	std::cout << "Drawing circles\n";
+	for (int i = 0; i < centers.size(); i++) {
+		std::cout << "Finding radii for center " << (i + 1) << "/" << centers.size() << '\n';
+		const auto& center = centers.at(i);
 		int x = center.first;
 		int y = center.second;
-		auto radii = lab6::findRadii(detection.edges, x, y, 10, 50, 10);
+
+		auto radii = lab6::findRadii(detection.edges, x, y, 100, 400, 200);
 		for (int radius : radii) {
 			auto circle = tjcv::getCirclePixels(x, y, radius);
 			for (auto circlePixel : circle) {
 				int cpX = circlePixel.first;
 				int cpY = circlePixel.second;
-				color.pixels[cpY][cpX] = WHITE;
+				if (tjcv::inbounds(cpX, cpY, color.width, color.height)) {
+					color.pixels[cpY][cpX] = CIRCLE_COLOR;
+				}
 			}
 		}
 	}
 
-	
+	std::cout << "Saving\n";
+
+	tjcv::saveColorPPM("houghcircles_color_output.ppm", color);
 }
