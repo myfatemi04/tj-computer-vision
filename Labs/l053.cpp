@@ -141,6 +141,29 @@ namespace tjcv {
 	}
 
 	/**
+	 * This method creates a new color image
+	 */
+	ColorImage cloneColorImage(ColorImage image) {
+		ColorImage cloned;
+		cloned.width = image.width;
+		cloned.height = image.height;
+		cloned.pixels = new int**[image.height];
+		for (int y = 0; y < image.height; y++) {
+			cloned.pixels[y] = new int*[image.width];
+			for (int x = 0; x < image.width; x++) {
+				auto pixel = image.pixels[y][x];
+				cloned.pixels[y][x] = new int[3] {
+					pixel[0],
+					pixel[1],
+					pixel[2]
+				};
+			}
+		}
+		
+		return cloned;
+	}
+
+	/**
 	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
 	 * finding the pixels of a circle. The center must be provided as a pair of integers, but the
 	 * radius may be a decimal value.
@@ -645,4 +668,5 @@ int main() {
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
 	auto votes = lab6::castVotes(detection.edges, detection.angles);
 	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 10);
+	
 }
