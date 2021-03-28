@@ -84,6 +84,7 @@ namespace tjcv {
 				handle << image.pixels[y][x] << " ";
 			}
 		}
+		
 		handle.close();
 	}
 
@@ -103,6 +104,24 @@ namespace tjcv {
 		}
 		handle.close();
 		return { pixels, width, height };
+	}
+
+	void saveColorPPM(std::string filename, ColorImage image) {
+		std::ofstream handle(filename);
+		// P3 [width] [height] [max intensity]
+		handle << "P3 " << image.width << " " << image.height << " 255\n";
+		for (int y = 0; y < image.height; y++) {
+			for (int x = 0; x < image.width; x++) {
+				auto pixel = image.pixels[y][x];
+				int r = pixel[0];
+				int g = pixel[1];
+				int b = pixel[2];
+				handle << r << " " << g << " " << b << " ";
+			}
+			handle << '\n';
+		}
+
+		handle.close();
 	}
 
 	GrayscaleImage convertToGrayscale(ColorImage image) {
