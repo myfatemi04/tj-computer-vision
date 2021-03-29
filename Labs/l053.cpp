@@ -601,31 +601,43 @@ namespace lab5 {
 namespace lab6 {
 	using tjcv::GrayscaleImage;
 
-	void castVotesForOnePixel(int ** votes, int x, int y, int width, int height, double angle) {
+	/**
+	 * Using Bresenham's algorithm, casts votes along a line. The rayWidth option allows you to cast lines that are wider than one pixel.
+	 */
+	void castVotesForOnePixel(int ** votes, int x, int y, int width, int height, double angle, int rayWidth = 0) {
 		using tjcv::inbounds;
 
-		tjcv::BresenhamPixelIterator it(x, y, angle);
-		int cx, cy;
-		while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
-			votes[cy][cx]++;
-			it.step(1);
+		for (int offset = -rayWidth; offset <= rayWidth; offset++) {
+			// Offset perpendicular to the line
+			// cos -> sin
+			// sin -> -cos
+			int offsetX = (int) (sin(angle) * offset);
+			int offsetY = (int) (-cos(angle) * offset);
+
+			tjcv::BresenhamPixelIterator it(x, y, angle);
+			int cx, cy;
+			while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
+				votes[cy][cx]++;
+				it.step(1);
+			}
+
+			it.reset();
+
+			while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
+				votes[cy][cx]++;
+				it.step(-1);
+			}
 		}
 
-		it.reset();
-
-		while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
-			votes[cy][cx]++;
-			it.step(-1);
-		}
 	}
 
-	int** castVotes(GrayscaleImage edges, double **angles) {
+	int** castVotes(GrayscaleImage edges, double **angles, int rayWidth = 0) {
 		int **votes = tjcv::make2DIntArray(edges.height, edges.width);
 
 		for (int y = 0; y < edges.height; y++) {
 			for (int x = 0; x < edges.width; x++) {
 				if (edges.pixels[y][x]) {
-					castVotesForOnePixel(votes, x, y, edges.width, edges.height, angles[y][x]);
+					castVotesForOnePixel(votes, x, y, edges.width, edges.height, angles[y][x], rayWidth);
 				}
 			}
 		}
@@ -671,13 +683,14 @@ namespace lab6 {
 	}
 
 	/**
-	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius).
+	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minRatio specifies the minimum ratio of empty edges to fillled edges.
 	 */
-	std::vector<int> findRadii(GrayscaleImage edges, int x, int y, int minRadius, int maxRadius, int threshold) {
+	std::vector<int> findRadii(GrayscaleImage edges, int x, int y, int minRadius, int maxRadius, double minRatio) {
 		std::vector<int> radii;
 		for (int radius = minRadius; radius < maxRadius; radius++) {
 			int edgesOnRadius = countEdgesForCircle(edges, x, y, radius);
-			if (edgesOnRadius > threshold) {
+			double maxEdgesOnRadius = radius * 2 * 3.141592653589;
+			if ((edgesOnRadius / maxEdgesOnRadius) >= minRatio) {
 				radii.push_back(radius);
 			}
 		}
@@ -686,6 +699,15 @@ namespace lab6 {
 	}
 
 	GrayscaleImage createVotesGraph(int **votes, int width, int height) {
+		int maxIntensity = 1;
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				if (votes[y][x] > maxIntensity) {
+					maxIntensity = votes[y][x];
+				}
+			}
+		}
+
 		GrayscaleImage image;
 		image.width = width;
 		image.height = height;
@@ -693,7 +715,8 @@ namespace lab6 {
 		for (int y = 0; y < height; y++) {
 			image.pixels[y] = new int[width];
 			for (int x = 0; x < width; x++) {
-				image.pixels[y][x] = votes[y][x] < 255 ? votes[y][x] : 255;
+				int intensity = (votes[y][x] * 255) / maxIntensity;
+				image.pixels[y][x] = intensity < 255 ? intensity : 255;
 			}
 		}
 		return image;
@@ -707,24 +730,26 @@ int main() {
 	auto detection = lab5::detectEdges(grayscale, 10, 30);
 	tjcv::saveGrayscalePPM("houghcircles_edges_output.ppm", detection.edges);
 	std::cout << "Casting votes\n";
-	auto votes = lab6::castVotes(detection.edges, detection.angles);
+	auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
 	auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
 	tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
 	std::cout << "Finding centers\n";
-	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 125);
+	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 400);
 
 	int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 
-	std::cout << "Drawing circles\n";
+	int foundRadiusCount = 0;
+	std::cout << "Finding radii\n";
+	std::cout << "Center count: " << centers.size() << '\n';
 	for (int i = 0; i < centers.size(); i++) {
-		std::cout << "Finding radii for center " << (i + 1) << "/" << centers.size() << '\n';
 		const auto& center = centers.at(i);
 		int x = center.first;
 		int y = center.second;
 
-		auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 150);
+		auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 0.3);
 		for (int radius : radii) {
-			std::cout << "Found radius " << radius << '\n';
+			std::cout << "Found radius " << radius << " for center " << (i + 1) << "/" << centers.size() << '\n';
+			foundRadiusCount++;
 			auto circle = tjcv::getCirclePixels(x, y, radius);
 			for (auto circlePixel : circle) {
 				int cpX = circlePixel.first;
@@ -735,6 +760,10 @@ int main() {
 			}
 		}
 	}
+
+	std::cout << "=== Summary ===\n";
+	std::cout << "Found " << centers.size() << " centers,\n";
+	std::cout << "Found " << foundRadiusCount << " radii\n";
 
 	std::cout << "Saving\n";
 
