@@ -57,6 +57,7 @@
         "map": "cpp",
         "xtree": "cpp",
         "set": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "deque": "cpp"
     }
 }
