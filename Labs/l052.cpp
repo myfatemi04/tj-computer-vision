@@ -17,6 +17,7 @@ namespace lab5 {
 	typedef struct {
 		byte** pixels;
 		int width, height;
+		int max = 255;
 	} GrayscaleImage;
 
 	typedef byte** Filter;
@@ -29,7 +30,12 @@ namespace lab5 {
 	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold) {
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
-		GrayscaleImage newImage = GrayscaleImage { new byte*[magnitudes.height], magnitudes.width, magnitudes.height };
+		GrayscaleImage newImage {
+			new byte*[magnitudes.height],
+			magnitudes.width,
+			magnitudes.height,
+			1
+		};
 
 		for (int y = 0; y < magnitudes.height; y++) {
 			newImage.pixels[y] = new byte[magnitudes.width];
@@ -37,9 +43,9 @@ namespace lab5 {
 				byte pixelValue = magnitudes.pixels[y][x];
 				if (pixelValue > upperThreshold) {
 					unvisited.insert({ x, y });
-					newImage.pixels[y][x] = 255;
+					newImage.pixels[y][x] = 2;
 				} else if (pixelValue > lowerThreshold) {
-					newImage.pixels[y][x] = 128;
+					newImage.pixels[y][x] = 1;
 				} else {
 					newImage.pixels[y][x] = 0;
 				}
@@ -65,11 +71,18 @@ namespace lab5 {
 					// If the current value is 1 (reached lower threshold, but not upper threshold),
 					// then because it touches a strong edge with a value of 2, it is automatically
 					// promoted. Then, we add it to the queue to update its neighbors as well.
-					if (newImage.pixels[y_][x_] == 128) {
-						newImage.pixels[y_][x_] = 255;
+					if (newImage.pixels[y_][x_] == 1) {
+						newImage.pixels[y_][x_] = 2;
 						unvisited.insert({x_, y_});
 					}
 				}
+			}
+		}
+
+		for (int y = 0; y < newImage.height; y++) {
+			for (int x = 0; x < newImage.width; x++) {
+				// Convert 2 to 1, and 1 to 0.
+				newImage.pixels[y][x] >>= 1;
 			}
 		}
 
@@ -101,10 +114,6 @@ namespace lab5 {
 
 				double currentMagnitude = magnitudes.pixels[y][x];
 
-				if (currentMagnitude < threshold) {
-					continue;
-				}
-
 				// angle is in the range [-pi, pi].
 				double angleRadians = atan2(yGradient.pixels[y][x], xGradient.pixels[y][x]);
 				double angleDegrees = angleRadians / (3.1415926535897932) / 2 * 360;
@@ -133,8 +142,7 @@ namespace lab5 {
 					if (currentMagnitude > magnitudes.pixels[y + dy][x + dx]) {
 						if (inBounds(x - dx, y - dy, width, height)) {
 							if (currentMagnitude > magnitudes.pixels[y - dy][x - dx]) {
-								newPixels[y][x] = 255; // (byte) sqrt(currMagnitudeSquared);
-								// std::cout << currentMagnitude << " > {" << magnitudes.pixels[y + dy][x + dx] << ", " << magnitudes.pixels[y - dy][x - dx] << "}\n";
+								newPixels[y][x] = 1;
 							}
 						}
 					}
@@ -142,7 +150,7 @@ namespace lab5 {
 			}
 		}
 
-		return GrayscaleImage { newPixels, width, height };
+		return GrayscaleImage { newPixels, width, height, 1 };
 	}
 
 	GrayscaleImage convolve(GrayscaleImage image, Filter filter) {
@@ -187,7 +195,7 @@ namespace lab5 {
 	void saveGrayscalePPM(std::string filename, GrayscaleImage image) {
 		std::ofstream handle(filename);
 		// P2 [width] [height] [max intensity]
-		handle << "P2 " << image.width << " " << image.height << " 255\n";
+		handle << "P2 " << image.width << " " << image.height << ' ' << image.max << '\n';
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
 				handle << image.pixels[y][x] << " ";
@@ -246,13 +254,18 @@ namespace lab5 {
 	}
 
 	GrayscaleImage combineImages(GrayscaleImage afterHysteresis, GrayscaleImage afterNonMaxSuppression) {
-		GrayscaleImage newImage = { new byte*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height };
+		GrayscaleImage newImage = {
+			new byte*[afterHysteresis.height], // pixels
+			afterHysteresis.width,
+			afterHysteresis.height,
+			1 // max intensity
+		};
 
 		for (int y = 0; y < afterHysteresis.height; y++) {
 			newImage.pixels[y] = new byte[afterHysteresis.width];
 			for (int x = 0; x < afterHysteresis.width; x++) {
-				if (afterHysteresis.pixels[y][x] > 128 && afterNonMaxSuppression.pixels[y][x] != 0) {
-					newImage.pixels[y][x] = 255;
+				if (afterHysteresis.pixels[y][x] != 0 && afterNonMaxSuppression.pixels[y][x] != 0) {
+					newImage.pixels[y][x] = 1;
 				} else {
 					newImage.pixels[y][x] = 0;
 				}
