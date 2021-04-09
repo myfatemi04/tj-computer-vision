@@ -16,7 +16,7 @@ namespace tjcv {
 	typedef struct {
 		int** pixels;
 		int width, height;
-		int max = 1;
+		int max = 255;
 	} GrayscaleImage;
 
 	typedef struct {
@@ -260,6 +260,7 @@ namespace lab5 {
 	typedef struct {
 		GrayscaleImage edges;
 		double** angles;
+		GrayscaleImage xGradient, yGradient;
 	} EdgeDetectionResult;
 
 	typedef int** Filter;
@@ -600,6 +601,8 @@ namespace lab5 {
 		EdgeDetectionResult result;
 		result.edges = combineImages(afterHysteresis, afterNonMaxSuppression);
 		result.angles = getEdgeAnglesFromGradients(xGradient, yGradient);
+		result.xGradient = xGradient;
+		result.yGradient = yGradient;
 		
 		return result;
 	}
@@ -719,60 +722,64 @@ namespace lab6 {
 		image.width = width;
 		image.height = height;
 		image.pixels = new int*[height];
+		image.max = maxIntensity;
 		for (int y = 0; y < height; y++) {
 			image.pixels[y] = new int[width];
 			for (int x = 0; x < width; x++) {
-				int intensity = (votes[y][x] * 255) / maxIntensity;
-				image.pixels[y][x] = intensity < 255 ? intensity : 255;
+				image.pixels[y][x] = votes[y][x];
 			}
 		}
 		return image;
 	}
-}
 
-int main() {
-	auto color = tjcv::loadColorPPM("image.ppm");
-	auto grayscale = tjcv::convertToGrayscale(color);
-	std::cout << "Detecting edges\n";
-	auto detection = lab5::detectEdges(grayscale, 10, 30);
-	tjcv::saveGrayscalePPM("houghcircles_edges_output.ppm", detection.edges);
-	std::cout << "Casting votes\n";
-	auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
-	auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
-	tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
-	std::cout << "Finding centers\n";
-	auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 400);
+	void part1() {
+		auto color = tjcv::loadColorPPM("image.ppm");
+		auto grayscale = tjcv::convertToGrayscale(color);
+		std::cout << "Detecting edges\n";
+		auto detection = lab5::detectEdges(grayscale, 10, 30);
+		tjcv::saveGrayscalePPM("houghcircles_edges_output.ppm", detection.edges);
+		std::cout << "Casting votes\n";
+		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
+		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
+		tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
+		std::cout << "Finding centers\n";
+		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 300);
 
-	int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
+		int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 
-	int foundRadiusCount = 0;
-	std::cout << "Finding radii\n";
-	std::cout << "Center count: " << centers.size() << '\n';
-	for (int i = 0; i < centers.size(); i++) {
-		const auto& center = centers.at(i);
-		int x = center.first;
-		int y = center.second;
+		int foundRadiusCount = 0;
+		std::cout << "Finding radii\n";
+		std::cout << "Center count: " << centers.size() << '\n';
+		for (int i = 0; i < centers.size(); i++) {
+			const auto& center = centers.at(i);
+			int x = center.first;
+			int y = center.second;
 
-		auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 0.3);
-		for (int radius : radii) {
-			std::cout << "Found radius " << radius << " for center " << (i + 1) << "/" << centers.size() << '\n';
-			foundRadiusCount++;
-			auto circle = tjcv::getCirclePixels(x, y, radius);
-			for (auto circlePixel : circle) {
-				int cpX = circlePixel.first;
-				int cpY = circlePixel.second;
-				if (tjcv::inbounds(cpX, cpY, color.width, color.height)) {
-					color.pixels[cpY][cpX] = CIRCLE_COLOR;
+			auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 0.5);
+			for (int radius : radii) {
+				std::cout << "Found radius " << radius << " for center " << (i + 1) << "/" << centers.size() << '\n';
+				foundRadiusCount++;
+				auto circle = tjcv::getCirclePixels(x, y, radius);
+				for (auto circlePixel : circle) {
+					int cpX = circlePixel.first;
+					int cpY = circlePixel.second;
+					if (tjcv::inbounds(cpX, cpY, color.width, color.height)) {
+						color.pixels[cpY][cpX] = CIRCLE_COLOR;
+					}
 				}
 			}
 		}
+
+		std::cout << "=== Summary ===\n";
+		std::cout << "Found " << centers.size() << " centers,\n";
+		std::cout << "Found " << foundRadiusCount << " radii\n";
+
+		std::cout << "Saving\n";
+
+		tjcv::saveColorPPM("houghcircles_color_output.ppm", color);
 	}
+}
 
-	std::cout << "=== Summary ===\n";
-	std::cout << "Found " << centers.size() << " centers,\n";
-	std::cout << "Found " << foundRadiusCount << " radii\n";
-
-	std::cout << "Saving\n";
-
-	tjcv::saveColorPPM("houghcircles_color_output.ppm", color);
+int main() {
+	lab6::part1();
 }
