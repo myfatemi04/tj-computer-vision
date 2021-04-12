@@ -260,6 +260,8 @@ namespace tjcv {
 	}
 
 	GrayscaleImage convolve(GrayscaleImage image, GrayscaleImage filter) {
+		dbg("Convolving an image around a filter " << filter.width << "x" << filter.height);
+
 		auto pixels = new int*[image.height];
 		for (int y = 0; y < image.height; y++) {
 			pixels[y] = new int[image.width];
@@ -278,16 +280,18 @@ namespace tjcv {
 				filterSum += filter.pixels[i][j];
 			}
 		}
+		dbg("Filter sum:" << filterSum);
 
 		int filterRadiusX = filter.width >> 1;
 		int filterRadiusY = filter.height >> 1;
+		dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY);
 
 		for (int y = filterRadiusY; y < image.height - filterRadiusY; y++) {
 			for (int x = filterRadiusX; x < image.width - filterRadiusX; x++) {
 				int total = 0;
 				for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
 					for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
-						total += image.pixels[y + relativeY][x + relativeX] * filter.pixels[relativeY + 1][relativeX + 1];
+						total += image.pixels[y + relativeY][x + relativeX] * filter.pixels[relativeY + filterRadiusY][relativeX + filterRadiusX];
 					}
 				}
 				pixels[y][x] = total / filterSum;
@@ -338,7 +342,9 @@ namespace lab5 {
 			new int[5] { 7, 12, 15, 12, 7 },
 			new int[5] { 4,  9, 12,  9, 4 },
 			new int[5] { 1,  4,  7,  4, 1 },
-		}
+		},
+		5,
+		5
 	};
 	
 	/**
@@ -496,14 +502,6 @@ namespace lab5 {
 		return { pixels, image.width, image.height };
 	}
 
-	void divideInPlace(GrayscaleImage image, int amount) {
-		for (int y = 0; y < image.height; y++) {
-			for (int x = 0; x < image.width; x++) {
-				image.pixels[y][x] = (int) (image.pixels[y][x] / amount);
-			}
-		}
-	}
-
 	GrayscaleImage combineImages(GrayscaleImage afterHysteresis, GrayscaleImage afterNonMaxSuppression) {
 		GrayscaleImage newImage = { new int*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height, 1 };
 
@@ -519,50 +517,6 @@ namespace lab5 {
 		}
 
 		return newImage;
-	}
-
-	void part1() {
-		ColorImage image = tjcv::loadColorPPM("image.ppm");
-		GrayscaleImage grayscale = convertToGrayscale(image);
-		saveGrayscalePPM("imageg.ppm", grayscale);
-
-		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
-		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
-		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
-		GrayscaleImage thresholded = applyThreshold(combined, 45);
-
-		saveGrayscalePPM("imagem.ppm", thresholded);
-	}
-
-	void part2() {
-		ColorImage image = tjcv::loadColorPPM("image.ppm");
-		GrayscaleImage grayscale = convertToGrayscale(image);
-	
-		GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
-		// divideInPlace(afterGaussian, 16);
-		GrayscaleImage xGradient = convolve(afterGaussian, horizontalSobel);
-		GrayscaleImage yGradient = convolve(afterGaussian, verticalSobel);
-		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
-
-		int lowerThreshold = 10;
-		int upperThreshold = 30;
-
-		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
-		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
-		GrayscaleImage finalResult = combineImages(afterHysteresis, afterNonMaxSuppression);
-
-		// saveGrayscalePPM("image_magnitudes.ppm", magnitudes);
-		saveGrayscalePPM("image1.ppm", afterNonMaxSuppression);
-		saveGrayscalePPM("image2.ppm", afterHysteresis);
-		saveGrayscalePPM("imagef.ppm", finalResult);
-	}
-
-	GrayscaleImage getHorizontalSobel() {
-		return horizontalSobel;
-	}
-
-	GrayscaleImage getVerticalSobel() {
-		return verticalSobel;
 	}
 
 	/**
@@ -589,8 +543,8 @@ namespace lab5 {
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
 		GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
 		// divideInPlace(afterGaussian, 16);
-		GrayscaleImage xGradient = convolve(afterGaussian, getHorizontalSobel());
-		GrayscaleImage yGradient = convolve(afterGaussian, getVerticalSobel());
+		GrayscaleImage xGradient = convolve(afterGaussian, horizontalSobel);
+		GrayscaleImage yGradient = convolve(afterGaussian, verticalSobel);
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
@@ -739,15 +693,13 @@ namespace lab6 {
 		auto detection = lab5::detectEdges(grayscale, 15, 30);
 		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
 
-		return;
-
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
 		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
 		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 400);
+		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 100);
 
 		dbg("Drawing centers\n");
 		auto colorWithCenters = tjcv::cloneColorImage(color);
