@@ -166,6 +166,13 @@ namespace lab5 {
 			pixels[image.height - 1][x] = 0;
 		}
 
+		int filterSum = 0;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				filterSum += filter[i][j];
+			}
+		}
+
 		for (int y = 1; y < image.height - 1; y++) {
 			for (int x = 1; x < image.width - 1; x++) {
 				int total = 0;
@@ -174,7 +181,7 @@ namespace lab5 {
 						total += image.pixels[y + relativeY][x + relativeX] * filter[relativeY + 1][relativeX + 1];
 					}
 				}
-				pixels[y][x] = total / 9;
+				pixels[y][x] = total / filterSum;
 			}
 		}
 		return { pixels, image.width, image.height };
