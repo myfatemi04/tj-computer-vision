@@ -7,6 +7,12 @@
 #include <set>
 #include <vector>
 
+#define USE_DEBUG true
+#if USE_DEBUG
+# define dbg(x) std::cout << x
+#else
+# define dbg(x)
+#endif
 namespace tjcv {
 	typedef struct {
 		int*** pixels;
@@ -252,6 +258,44 @@ namespace tjcv {
 	bool inbounds(int x, int y, int maxX, int maxY) {
 		return (x >= 0 && x < maxX) && (y >= 0 && y < maxY);
 	}
+
+	GrayscaleImage convolve(GrayscaleImage image, GrayscaleImage filter) {
+		auto pixels = new int*[image.height];
+		for (int y = 0; y < image.height; y++) {
+			pixels[y] = new int[image.width];
+			pixels[y][0] = 0;
+			pixels[y][image.width - 1] = 0;
+		}
+		// Initialize the edges to 0
+		for (int x = 0; x < image.width; x++) {
+			pixels[0][x] = 0;
+			pixels[image.height - 1][x] = 0;
+		}
+
+		int filterSum = 0;
+		for (int i = 0; i < filter.height; i++) {
+			for (int j = 0; j < filter.width; j++) {
+				filterSum += filter.pixels[i][j];
+			}
+		}
+
+		int filterRadiusX = filter.width >> 1;
+		int filterRadiusY = filter.height >> 1;
+
+		for (int y = filterRadiusY; y < image.height - filterRadiusY; y++) {
+			for (int x = filterRadiusX; x < image.width - filterRadiusX; x++) {
+				int total = 0;
+				for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
+					for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
+						total += image.pixels[y + relativeY][x + relativeX] * filter.pixels[relativeY + 1][relativeX + 1];
+					}
+				}
+				pixels[y][x] = total / filterSum;
+			}
+		}
+		return { pixels, image.width, image.height };
+	}
+
 }
 
 namespace lab5 {
@@ -263,9 +307,39 @@ namespace lab5 {
 		GrayscaleImage xGradient, yGradient;
 	} EdgeDetectionResult;
 
-	typedef int** Filter;
-
-	Filter verticalSobel = nullptr, horizontalSobel = nullptr;
+	GrayscaleImage verticalSobel {
+		new int*[3] {
+			new int[3] {	1,	0, -1 },
+			new int[3] {	2,	0, -2 },
+			new int[3] {	1,	0, -1 }
+		},
+		3,
+		3
+	}, horizontalSobel {
+		new int*[3] {
+			new int[3] {	1,	2,	1 },
+			new int[3] {	0,	0,	0 },
+			new int[3] { -1, -2, -1 }
+		},
+		3,
+		3
+	}, gaussian3 {
+		new int*[3] {
+			new int[3] { 1, 2, 1 },
+			new int[3] { 2, 4, 2 },
+			new int[3] { 1, 2, 1 },
+		},
+		3,
+		3
+	}, gaussian5 {
+		new int*[5] {
+			new int[5] { 1,  4,  7,  4, 1 },
+			new int[5] { 4,  9, 12,  9, 4 },
+			new int[5] { 7, 12, 15, 12, 7 },
+			new int[5] { 4,  9, 12,  9, 4 },
+			new int[5] { 1,  4,  7,  4, 1 },
+		}
+	};
 	
 	/**
 	 * hysteresis() takes an image and runs a double threshold on it. Then, any "weak" edges
@@ -346,7 +420,7 @@ namespace lab5 {
 	 * nonMaxSuppression() looks at the magnitude and directions of each edge gradient.
 	 * If a pixel along an edge is not the strongest edge along its gradient, it is suppressed.
 	 */
-	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient, GrayscaleImage magnitudes, int threshold) {
+	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient, GrayscaleImage magnitudes) {
 		int width = xGradient.width;
 		int height = xGradient.height;
 
@@ -396,33 +470,6 @@ namespace lab5 {
 		}
 
 		return GrayscaleImage { newPixels, width, height, 1 };
-	}
-
-	GrayscaleImage convolve(GrayscaleImage image, Filter filter) {
-		auto pixels = new int*[image.height];
-		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new int[image.width];
-			pixels[y][0] = 0;
-			pixels[y][image.width - 1] = 0;
-		}
-		// Initialize the edges to 0
-		for (int x = 0; x < image.width; x++) {
-			pixels[0][x] = 0;
-			pixels[image.height - 1][x] = 0;
-		}
-
-		for (int y = 1; y < image.height - 1; y++) {
-			for (int x = 1; x < image.width - 1; x++) {
-				int total = 0;
-				for (int relativeX = -1; relativeX <= 1; relativeX++) {
-					for (int relativeY = -1; relativeY <= 1; relativeY++) {
-						total += image.pixels[y + relativeY][x + relativeX] * filter[relativeY + 1][relativeX + 1];
-					}
-				}
-				pixels[y][x] = total / 9;
-			}
-		}
-		return { pixels, image.width, image.height };
 	}
 
 	GrayscaleImage combineSobel(GrayscaleImage first, GrayscaleImage second) {
@@ -479,17 +526,6 @@ namespace lab5 {
 		GrayscaleImage grayscale = convertToGrayscale(image);
 		saveGrayscalePPM("imageg.ppm", grayscale);
 
-		Filter verticalSobel = new int*[3] {
-			new int[3] {	1,	2,	1 },
-			new int[3] {	0,	0,	0 },
-			new int[3] { -1, -2, -1 }
-		};
-		Filter horizontalSobel = new int*[3] {
-			new int[3] {	1,	0, -1 },
-			new int[3] {	2,	0, -2 },
-			new int[3] {	1,	0, -1 }
-		};
-
 		GrayscaleImage verticalFiltered = convolve(grayscale, verticalSobel);
 		GrayscaleImage horizontalFiltered = convolve(grayscale, horizontalSobel);
 		GrayscaleImage combined = combineSobel(horizontalFiltered, verticalFiltered);
@@ -501,24 +537,8 @@ namespace lab5 {
 	void part2() {
 		ColorImage image = tjcv::loadColorPPM("image.ppm");
 		GrayscaleImage grayscale = convertToGrayscale(image);
-
-		Filter verticalSobel = new int*[3] {
-			new int[3] {	1,	2,	1 },
-			new int[3] {	0,	0,	0 },
-			new int[3] { -1, -2, -1 }
-		};
-		Filter horizontalSobel = new int*[3] {
-			new int[3] {	1,	0, -1 },
-			new int[3] {	2,	0, -2 },
-			new int[3] {	1,	0, -1 }
-		};
-		Filter gaussian = new int*[3] {
-			new int[3] { 1, 2, 1 },
-			new int[3] { 2, 4, 2 },
-			new int[3] { 1, 2, 1 },
-		};
 	
-		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
+		GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
 		// divideInPlace(afterGaussian, 16);
 		GrayscaleImage xGradient = convolve(afterGaussian, horizontalSobel);
 		GrayscaleImage yGradient = convolve(afterGaussian, verticalSobel);
@@ -528,7 +548,7 @@ namespace lab5 {
 		int upperThreshold = 30;
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
-		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 10);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
 		GrayscaleImage finalResult = combineImages(afterHysteresis, afterNonMaxSuppression);
 
 		// saveGrayscalePPM("image_magnitudes.ppm", magnitudes);
@@ -537,27 +557,11 @@ namespace lab5 {
 		saveGrayscalePPM("imagef.ppm", finalResult);
 	}
 
-	Filter getHorizontalSobel() {
-		if (horizontalSobel == nullptr) {
-			horizontalSobel = new int*[3] {
-				new int[3] {	1,	0, -1 },
-				new int[3] {	2,	0, -2 },
-				new int[3] {	1,	0, -1 }
-			};
-		}
-
+	GrayscaleImage getHorizontalSobel() {
 		return horizontalSobel;
 	}
 
-	Filter getVerticalSobel() {
-		if (verticalSobel == nullptr) {
-			verticalSobel = new int*[3] {
-				new int[3] {	1,	2,	1 },
-				new int[3] {	0,	0,	0 },
-				new int[3] { -1, -2, -1 }
-			};
-		}
-
+	GrayscaleImage getVerticalSobel() {
 		return verticalSobel;
 	}
 
@@ -583,20 +587,14 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		Filter gaussian = new int*[3] {
-			new int[3] { 1, 2, 1 },
-			new int[3] { 2, 4, 2 },
-			new int[3] { 1, 2, 1 },
-		};
-	
-		GrayscaleImage afterGaussian = convolve(grayscale, gaussian);
+		GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
 		// divideInPlace(afterGaussian, 16);
 		GrayscaleImage xGradient = convolve(afterGaussian, getHorizontalSobel());
 		GrayscaleImage yGradient = convolve(afterGaussian, getVerticalSobel());
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
-		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes, 10);
+		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
 
 		EdgeDetectionResult result;
 		result.edges = combineImages(afterHysteresis, afterNonMaxSuppression);
@@ -733,50 +731,41 @@ namespace lab6 {
 	}
 
 	void part1() {
+		dbg("Loading image\n");
 		auto color = tjcv::loadColorPPM("image.ppm");
 		auto grayscale = tjcv::convertToGrayscale(color);
-		std::cout << "Detecting edges\n";
-		auto detection = lab5::detectEdges(grayscale, 10, 30);
-		tjcv::saveGrayscalePPM("houghcircles_edges_output.ppm", detection.edges);
-		std::cout << "Casting votes\n";
+
+		dbg("Detecting edges\n");
+		auto detection = lab5::detectEdges(grayscale, 15, 30);
+		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
+
+		return;
+
+		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
 		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
-		tjcv::saveGrayscalePPM("houghcircles_votes_output.ppm", votesGraph);
-		std::cout << "Finding centers\n";
-		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 300);
+		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
 
-		int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
+		dbg("Finding centers\n");
+		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 400);
 
-		int foundRadiusCount = 0;
-		std::cout << "Finding radii\n";
-		std::cout << "Center count: " << centers.size() << '\n';
-		for (int i = 0; i < centers.size(); i++) {
-			const auto& center = centers.at(i);
+		dbg("Drawing centers\n");
+		auto colorWithCenters = tjcv::cloneColorImage(color);
+		int* CENTER_COLOR = new int[3] { 255, 0, 0 };
+		// On all the centers found, create a filled red circle of radius 5.
+		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
-
-			auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 0.5);
-			for (int radius : radii) {
-				std::cout << "Found radius " << radius << " for center " << (i + 1) << "/" << centers.size() << '\n';
-				foundRadiusCount++;
-				auto circle = tjcv::getCirclePixels(x, y, radius);
-				for (auto circlePixel : circle) {
-					int cpX = circlePixel.first;
-					int cpY = circlePixel.second;
-					if (tjcv::inbounds(cpX, cpY, color.width, color.height)) {
-						color.pixels[cpY][cpX] = CIRCLE_COLOR;
-					}
+			// Iterate over radii
+			for (int r = 1; r < 5; r++) {
+				for (const auto& pixel : tjcv::getCirclePixels(x, y, r)) {
+					int px = pixel.first;
+					int py = pixel.second;
+					colorWithCenters.pixels[py][px] = CENTER_COLOR;
 				}
 			}
 		}
-
-		std::cout << "=== Summary ===\n";
-		std::cout << "Found " << centers.size() << " centers,\n";
-		std::cout << "Found " << foundRadiusCount << " radii\n";
-
-		std::cout << "Saving\n";
-
-		tjcv::saveColorPPM("houghcircles_color_output.ppm", color);
+		tjcv::saveColorPPM("imageCC.ppm", colorWithCenters);
 	}
 }
 
