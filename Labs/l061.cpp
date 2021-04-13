@@ -72,7 +72,7 @@ namespace tjcv {
 					}
 				} else {
 					currentY += count;
-					buildup += count * cos(angle) / sin(angle);
+					buildup += count * sin(angle) / cos(angle);
 					int overshoot = (int) buildup;
 					if (overshoot != 0) {
 						buildup -= overshoot;
@@ -88,7 +88,7 @@ namespace tjcv {
 		handle << "P2 " << image.width << " " << image.height << ' ' << image.max << '\n';
 		for (int y = 0; y < image.height; y++) {
 			for (int x = 0; x < image.width; x++) {
-				handle << image.pixels[y][x] << " ";
+				handle << abs(image.pixels[y][x]) << " ";
 			}
 			handle << '\n';
 		}
@@ -552,12 +552,8 @@ namespace lab5 {
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
 		// GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
-		// tjcv::saveGrayscalePPM("image_g.ppm", afterGaussian);
-
 		GrayscaleImage xGradient = convolve(grayscale, horizontalSobel);
-		tjcv::saveGrayscalePPM("image_xg.ppm", xGradient);
 		GrayscaleImage yGradient = convolve(grayscale, verticalSobel);
-		tjcv::saveGrayscalePPM("image_yg.ppm", yGradient);
 		
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
@@ -566,7 +562,7 @@ namespace lab5 {
 
 		EdgeDetectionResult result;
 		result.edges = combineImages(afterHysteresis, afterNonMaxSuppression);
-		tjcv::saveGrayscalePPM("image_h.ppm", afterHysteresis);
+		// tjcv::saveGrayscalePPM("image_h.ppm", afterHysteresis);
 		result.angles = getEdgeAnglesFromGradients(xGradient, yGradient);
 		result.xGradient = xGradient;
 		result.yGradient = yGradient;
@@ -699,22 +695,47 @@ namespace lab6 {
 		return image;
 	}
 
+	GrayscaleImage createAnglesGraph(lab5::EdgeDetectionResult detection) {
+		GrayscaleImage image;
+		image.height = detection.edges.height;
+		image.width = detection.edges.width;
+		image.max = 360;
+		image.pixels = new int*[detection.edges.height];
+		for (int y = 0; y < detection.edges.height; y++) {
+			image.pixels[y] = new int[detection.edges.width];
+			for (int x = 0; x < detection.edges.width; x++) {
+				if (detection.edges.pixels[y][x]) {
+					int deg = (int) (detection.angles[y][x] * 360 / (2 * 3.141592653589));
+					while (deg < 0) deg += 360;
+					image.pixels[y][x] = deg;
+				} else {
+					image.pixels[y][x] = 0;
+				}
+			}
+		}
+		return image;
+	}
+
 	void part1() {
 		dbg("Loading image\n");
 		auto color = tjcv::loadColorPPM("image.ppm");
 		auto grayscale = tjcv::convertToGrayscale(color);
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscale, 45, 65);
+		auto detection = lab5::detectEdges(grayscale, 160, 180);
 		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
 
+		// dbg("Creating angles graph\n");
+		// auto angles = createAnglesGraph(detection);
+		// tjcv::saveGrayscalePPM("angles.ppm", angles);
+
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 0);
+		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
 		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
 		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 130);
+		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 200);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -725,7 +746,7 @@ namespace lab6 {
 		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
-			dbg("Center location: " << x << ", " << y << '\n');
+			// dbg("Center location: " << x << ", " << y << '\n');
 			// Iterate over radii
 			for (int r = 1; r < 5; r++) {
 				for (const auto& pixel : tjcv::getCirclePixels(x, y, r)) {
