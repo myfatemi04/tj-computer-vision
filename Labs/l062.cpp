@@ -14,6 +14,13 @@
 # define dbg(x)
 #endif
 
+int max(int a, int b) {
+	return (a > b) ? a : b;
+}
+
+int min(int a, int b) {
+	return (a < b) ? a : b;
+}
 namespace tjcv {
 	typedef struct {
 		int*** pixels;
@@ -311,19 +318,6 @@ namespace tjcv {
 		return { pixels, image.width, image.height };
 	}
 
-	void drawFilledCircle(ColorImage image, int x, int y, int radius, int* color) {
-		for (int r = 0; r < radius; r++) {
-			auto ring = getCirclePixels(x, y, r);
-			for (const auto& pixel : ring) {
-				int px = pixel.first;
-				int py = pixel.second;
-				if (inbounds(px, py, image.width, image.height)) {
-					image.pixels[px][py] = color;
-				}
-			}
-		}
-	}
-
 	const double SIN45 = sqrt(2) / 2;
 
 	int countPixelsToDrawCircle(int radius) {
@@ -339,9 +333,17 @@ namespace tjcv {
 	void drawCircle(ColorImage image, int x, int y, double radius, int* color) {
 		auto pixels = getCirclePixels(x, y, radius);
 		for (const auto& pixel : pixels) {
-			if (inbounds(x, y, image.width, image.height)) {
-				image.pixels[y][x] = color;
+			int px = pixel.first;
+			int py = pixel.second;
+			if (inbounds(px, py, image.width, image.height)) {
+				image.pixels[py][px] = color;
 			}
+		}
+	}
+
+	void drawFilledCircle(ColorImage image, int x, int y, int radius, int* color) {
+		for (int r = 0; r < radius; r++) {
+			drawCircle(image, x, y, r, color);
 		}
 	}
 }
@@ -611,7 +613,14 @@ namespace lab6 {
 	/**
 	 * Using Bresenham's algorithm, casts votes along a line. The rayWidth option allows you to cast lines that are wider than one pixel.
 	 */
-	void castVotesForOnePixel(int **votes, int x, int y, int width, int height, double angle, int rayWidth = 0) {
+	void castVotesForOnePixel(
+		int **votes,
+		int x,
+		int y,
+		int width,
+		int height,
+		double angle,
+		int rayWidth = 0) {
 		using tjcv::inbounds;
 
 		for (int offset = -rayWidth; offset <= rayWidth; offset++) {
@@ -716,8 +725,8 @@ namespace lab6 {
 			int ringMaxEdgeCount = tjcv::countPixelsToDrawCircle(radius);
 
 			// Ring radii must be in the interval requested
-			int ringStartRadius  = __max(minRadius, radius - ringWidth);
-			int ringEndRadius    = __min(radius + ringWidth, maxRadius - 1);
+			int ringStartRadius  = max(minRadius, radius - ringWidth);
+			int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
 
 			for (int ringRadius = ringStartRadius; ringRadius <= ringEndRadius; ringRadius++) {
 				ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
@@ -801,11 +810,11 @@ namespace lab6 {
 
 	void part2() {
 		dbg("Loading image\n");
-		auto color = tjcv::loadColorPPM("image.ppm");
-		auto grayscale = tjcv::convertToGrayscale(color);
+		auto colorImage = tjcv::loadColorPPM("image.ppm");
+		auto grayscaleImage = tjcv::convertToGrayscale(colorImage);
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscale, 160, 180);
+		auto detection = lab5::detectEdges(grayscaleImage, 160, 180);
 		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
 
 		dbg("Casting votes\n");
@@ -814,7 +823,7 @@ namespace lab6 {
 		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 200);
+		auto centers = lab6::findCenters(votes, grayscaleImage.width, grayscaleImage.height, 200);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -827,11 +836,12 @@ namespace lab6 {
 			const auto& center = centers.at(i);
 			int x = center.first;
 			int y = center.second;
+			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.edges, x, y, 50, 200, 2, 0.6);
+			auto radii = lab6::findRadii(detection.edges, x, y, 0, 40, 2, 0.6);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
-				tjcv::drawCircle(color, x, y, radius, CIRCLE_COLOR);
+				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
 			}
 
 			foundRadiusCount += radii.size();
@@ -840,7 +850,7 @@ namespace lab6 {
 		dbg("Found " << foundRadiusCount << " radii\n");
 		dbg("Saving\n");
 
-		tjcv::saveColorPPM("imagecircles.ppm", color);
+		tjcv::saveColorPPM("imagecircles.ppm", colorImage);
 	}
 }
 
