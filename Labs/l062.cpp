@@ -684,12 +684,12 @@ namespace lab6 {
 	 */
 	int countEdgesForCircle(GrayscaleImage edges, int x, int y, int radius) {
 		int count = 0;
-		auto circlePixels = tjcv::getCirclePixels(x, y, radius);
-		for (const auto& pixel : circlePixels) {
-			int pixelX = pixel.first;
-			int pixelY = pixel.second;
-			if (tjcv::inbounds(pixelX, pixelY, edges.width, edges.height)) {
-				if (edges.pixels[pixelY][pixelX] > 0) {
+		auto pixels = tjcv::getCirclePixels(x, y, radius);
+		for (const auto& pixel : pixels) {
+			int px = pixel.first;
+			int py = pixel.second;
+			if (tjcv::inbounds(px, py, edges.width, edges.height)) {
+				if (edges.pixels[py][px] > 0) {
 					count++;
 				}
 			}
@@ -720,7 +720,7 @@ namespace lab6 {
 		// Iterate over each possible radius, using the given ringWidth.
 		for (int radius = minRadius; radius < maxRadius; radius++) {
 			// Keep track of how many edges are found along the circle
-			int ringEdgeCount    = edgesByRadius[radius];
+			int ringEdgeCount    = edgesByRadius[radius - minRadius];
 			// Keep track of how many edges could possibly be found along the circle
 			int ringMaxEdgeCount = tjcv::countPixelsToDrawCircle(radius);
 
@@ -729,11 +729,15 @@ namespace lab6 {
 			int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
 
 			for (int ringRadius = ringStartRadius; ringRadius <= ringEndRadius; ringRadius++) {
-				ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
+				// ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
 				ringEdgeCount    += edgesByRadius[ringRadius - minRadius];
 			}
 
 			double ratio = ((double) ringEdgeCount / ringMaxEdgeCount);
+			if (radius < 30 && radius > 10) {
+				dbg("found/max (=): " << ringEdgeCount << "/" << ringMaxEdgeCount << "(" << ratio << ")\n");
+			}
+
 			if (ratio > minRatio) {
 				radii.push_back(radius);
 			}
@@ -838,7 +842,7 @@ namespace lab6 {
 			int y = center.second;
 			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.edges, x, y, 0, 40, 2, 0.6);
+			auto radii = lab6::findRadii(detection.edges, x, y, 10, 30, 4, 0.8);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
