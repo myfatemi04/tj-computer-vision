@@ -22,10 +22,103 @@ int min(int a, int b) {
 	return (a < b) ? a : b;
 }
 namespace tjcv {
-	typedef struct {
-		int*** pixels;
-		int width, height;
-	} ColorImage;
+	class ColorImage {
+		private:
+			int*** pixels;
+			int width, height;
+			int max = 255;
+		public:
+			ColorImage(int width, int height, int max = 255): width(width), height(height), max(max) {
+				this->pixels = new int**[height];
+				for (int y = 0; y < height; y++) {
+					this->pixels[y] = new int*[width];
+					for (int x = 0; x < width; x++) {
+						// Set to color white
+						this->pixels[y][x] = new int[3] { max, max, max };
+					}
+				}
+			}
+
+			void set(int x, int y, int *value) {
+				if (x < 0 || y < 0) return;
+				if (x >= width || y >= height) return;
+				this->pixels[y][x] = value;
+			}
+
+			int *get(int x, int y) {
+				if (x < 0 || y < 0) return nullptr;
+				if (x >= width || y >= height) return nullptr;
+				return this->pixels[y][x];
+			}
+
+			int getWidth() { return this->width; }
+			int getHeight() { return this->height; }
+			std::pair<int, int> getSize() { return { this->width, this->height }; }
+
+			void save(std::string filename) {
+				std::ofstream handle(filename);
+				// P3 [width] [height] [max intensity]
+				handle << "P3 " << width << " " << height << " 255\n";
+				for (int y = 0; y < height; y++) {
+					for (int x = 0; x < width; x++) {
+						auto pixel = pixels[y][x];
+						int r = pixel[0];
+						int g = pixel[1];
+						int b = pixel[2];
+						handle << r << " " << g << " " << b << " ";
+					}
+					handle << '\n';
+				}
+
+				handle.close();
+			}
+
+			GrayscaleImage toGrayscale() {
+				int** _pixels = new int*[height];
+				for (int y = 0; y < height; y++) {
+					_pixels[y] = new int[width];
+					for (int x = 0; x < width; x++) {
+						_pixels[y][x] = (pixels[y][x][0] + pixels[y][x][1] + pixels[y][x][2]) / 3;
+					}
+				}
+				return { _pixels, width, height, max };
+			}
+
+			ColorImage clone() {
+				ColorImage cloned(width, height);
+				for (int y = 0; y < height; y++) {
+					for (int x = 0; x < width; x++) {
+						auto pixel = get(x, y);
+						cloned.set(x, y, new int[3] {
+							pixel[0],
+							pixel[1],
+							pixel[2]
+						});
+					}
+				}
+				
+				return cloned;
+			}
+
+			static ColorImage fromPPM(std::string filename) {
+				std::ifstream handle(filename);
+				std::string _ppmtype;
+				handle >> _ppmtype;
+				int width, height, _max;
+				handle >> width >> height >> _max;
+
+				ColorImage image(width, height, _max);
+				for (int y = 0; y < height; y++) {
+					for (int x = 0; x < width; x++) {
+						int *pixel = new int[3];
+						handle >> pixel[0] >> pixel[1] >> pixel[2];
+						image.set(x, y, pixel);
+					}
+				}
+				handle.close();
+				return image;
+			}
+	};
 
 	typedef struct {
 		int** pixels;
@@ -104,98 +197,20 @@ namespace tjcv {
 		handle.close();
 	}
 
-	ColorImage loadColorPPM(std::string filename) {
-		std::ifstream handle(filename);
-		std::string _ppmtype;
-		handle >> _ppmtype;
-		int width, height, _max;
-		handle >> width >> height >> _max;
-		auto pixels = new int**[height];
-		for (int y = 0; y < height; y++) {
-			pixels[y] = new int*[width];
-			for (int x = 0; x < width; x++) {
-				pixels[y][x] = new int[3];
-				handle >> pixels[y][x][0] >> pixels[y][x][1] >> pixels[y][x][2];
-			}
-		}
-		handle.close();
-		return { pixels, width, height };
-	}
-
-	void saveColorPPM(std::string filename, ColorImage image) {
-		std::ofstream handle(filename);
-		// P3 [width] [height] [max intensity]
-		handle << "P3 " << image.width << " " << image.height << " 255\n";
-		for (int y = 0; y < image.height; y++) {
-			for (int x = 0; x < image.width; x++) {
-				auto pixel = image.pixels[y][x];
-				int r = pixel[0];
-				int g = pixel[1];
-				int b = pixel[2];
-				handle << r << " " << g << " " << b << " ";
-			}
-			handle << '\n';
-		}
-
-		handle.close();
-	}
-
-	GrayscaleImage convertToGrayscale(ColorImage image) {
-		int** pixels = new int*[image.height];
-		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new int[image.width];
-			for (int x = 0; x < image.width; x++) {
-				pixels[y][x] = (image.pixels[y][x][0] + image.pixels[y][x][1] + image.pixels[y][x][2]) / 3;
-			}
-		}
-		return { pixels, image.width, image.height };
-	}
-
 	/**
 	 * This simply creates a color image by taking the gray value and using it as the R, G, and B values.
 	 */
 	ColorImage convertToColor(GrayscaleImage gray) {
-		ColorImage color;
-		color.width = gray.width;
-		color.height = gray.height;
-		color.pixels = new int**[gray.height];
+		ColorImage color(gray.width, gray.height);
 		for (int y = 0; y < gray.height; y++) {
-			color.pixels[y] = new int*[gray.width];
 			for (int x = 0; x < gray.width; x++) {
 				int intensity = gray.pixels[y][x];
 				// R, G, and B are all the same value
-				color.pixels[y][x] = new int[3] {
-					intensity,
-					intensity,
-					intensity
-				};
+				color.set(x, y, new int[3] { intensity, intensity, intensity });
 			}
 		}
 
 		return color;
-	}
-
-	/**
-	 * This method creates a new color image
-	 */
-	ColorImage cloneColorImage(ColorImage image) {
-		ColorImage cloned;
-		cloned.width = image.width;
-		cloned.height = image.height;
-		cloned.pixels = new int**[image.height];
-		for (int y = 0; y < image.height; y++) {
-			cloned.pixels[y] = new int*[image.width];
-			for (int x = 0; x < image.width; x++) {
-				auto pixel = image.pixels[y][x];
-				cloned.pixels[y][x] = new int[3] {
-					pixel[0],
-					pixel[1],
-					pixel[2]
-				};
-			}
-		}
-		
-		return cloned;
 	}
 
 	/**
@@ -335,9 +350,7 @@ namespace tjcv {
 		for (const auto& pixel : pixels) {
 			int px = pixel.first;
 			int py = pixel.second;
-			if (inbounds(px, py, image.width, image.height)) {
-				image.pixels[py][px] = color;
-			}
+			image.set(px, py, color);
 		}
 	}
 
@@ -679,17 +692,27 @@ namespace lab6 {
 	}
 
 	/**
-	 * countEdgesForCircle counts the number of pixels along the edge of a circle.
-	 * The circle is specified by an x, y, and radius.
+	 * scoreCircleCandidate scores the likelihood of a radius being a circle.
+	 * The way it does this is by iterating over the pixels that would compose a circle.
+	 * If a pixel is an edge, and also connected to other edges, then it will receive a
+	 * higher score than other edges.
 	 */
-	int countEdgesForCircle(GrayscaleImage edges, int x, int y, int radius) {
-		int count = 0;
+	double scoreCircleCandidate(
+		GrayscaleImage edges,
+		int x,
+		int y,
+		int radius,
+		double unconnectedScore,
+		double connectedScore) {
+		double count = 0;
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
 		for (const auto& pixel : pixels) {
 			int px = pixel.first;
 			int py = pixel.second;
 			if (tjcv::inbounds(px, py, edges.width, edges.height)) {
 				if (edges.pixels[py][px] > 0) {
+					// Check if it has a neighboring edge
+					
 					count++;
 				}
 			}
@@ -710,9 +733,9 @@ namespace lab6 {
 		int ringWidth,
 		double minRatio) {
 		// Count the edges on each radius
-		int *edgesByRadius = new int[maxRadius - minRadius];
+		double *edgesByRadius = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			edgesByRadius[radius - minRadius] = countEdgesForCircle(edges, x, y, radius);
+			edgesByRadius[radius - minRadius] = scoreCircleCandidate(edges, x, y, radius, 0.5, 1);
 		}
 		
 		std::vector<int> radii;
@@ -770,9 +793,10 @@ namespace lab6 {
 	}
 
 	void part1() {
+		using tjcv::ColorImage;
 		dbg("Loading image\n");
-		auto color = tjcv::loadColorPPM("image.ppm");
-		auto grayscale = tjcv::convertToGrayscale(color);
+		auto color = ColorImage::fromPPM("image.ppm");
+		auto grayscale = color.toGrayscale();
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscale, 160, 180);
@@ -789,7 +813,7 @@ namespace lab6 {
 		dbg("Found " << centers.size() << " centers\n");
 
 		dbg("Drawing centers\n");
-		auto colorWithCenters = tjcv::cloneColorImage(color);
+		auto colorWithCenters = color.clone();
 		int* CENTER_COLOR = new int[3] { 255, 0, 0 };
 		// On all the centers found, create a filled red circle of radius 5.
 		for (const auto& center : centers) {
@@ -801,21 +825,21 @@ namespace lab6 {
 				for (const auto& pixel : tjcv::getCirclePixels(x, y, r)) {
 					int px = pixel.first;
 					int py = pixel.second;
-					if (tjcv::inbounds(px, py, color.width, color.height)) {
-						colorWithCenters.pixels[py][px] = CENTER_COLOR;
-					}
+					colorWithCenters.set(px, py, CENTER_COLOR);
 				}
 			}
 		}
 
 		dbg("Saving centers\n");
-		tjcv::saveColorPPM("imageCC.ppm", colorWithCenters);
+		colorWithCenters.save("imageCC.ppm");
 	}
 
 	void part2() {
+		using tjcv::ColorImage;
+
 		dbg("Loading image\n");
-		auto colorImage = tjcv::loadColorPPM("image.ppm");
-		auto grayscaleImage = tjcv::convertToGrayscale(colorImage);
+		auto colorImage = ColorImage::fromPPM("image.ppm");
+		auto grayscaleImage = colorImage.toGrayscale();
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, 160, 180);
@@ -842,7 +866,7 @@ namespace lab6 {
 			int y = center.second;
 			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.edges, x, y, 10, 30, 4, 0.8);
+			auto radii = lab6::findRadii(detection.edges, x, y, 10, 30, 2, 0.9);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
@@ -854,7 +878,7 @@ namespace lab6 {
 		dbg("Found " << foundRadiusCount << " radii\n");
 		dbg("Saving\n");
 
-		tjcv::saveColorPPM("imagecircles.ppm", colorImage);
+		colorImage.save("imagecircles.ppm");
 	}
 }
 
