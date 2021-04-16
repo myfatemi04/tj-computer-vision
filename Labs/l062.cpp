@@ -22,101 +22,30 @@ int min(int a, int b) {
 	return (a < b) ? a : b;
 }
 namespace tjcv {
+	class GrayscaleImage;
+	class ColorImage;
+
 	class ColorImage {
 		private:
 			int*** pixels;
 			int width, height;
 			int max = 255;
 		public:
-			ColorImage(int width, int height, int max = 255): width(width), height(height), max(max) {
-				this->pixels = new int**[height];
-				for (int y = 0; y < height; y++) {
-					this->pixels[y] = new int*[width];
-					for (int x = 0; x < width; x++) {
-						// Set to color white
-						this->pixels[y][x] = new int[3] { 0, 0, 0 };
-					}
-				}
-			}
+			ColorImage(int width, int height, int max = 255);
 
-			void set(int x, int y, int *value) {
-				if (x < 0 || y < 0) return;
-				if (x >= width || y >= height) return;
-				this->pixels[y][x] = value;
-			}
+			void set(int x, int y, int *value);
+			int *get(int x, int y);
 
-			int *get(int x, int y) {
-				if (x < 0 || y < 0) return nullptr;
-				if (x >= width || y >= height) return nullptr;
-				return this->pixels[y][x];
-			}
+			int getWidth() const;
+			int getHeight() const;
+			std::pair<int, int> getSize() const;
 
-			int getWidth() { return this->width; }
-			int getHeight() { return this->height; }
-			std::pair<int, int> getSize() { return { this->width, this->height }; }
+			void save(std::string filename);
 
-			void save(std::string filename) {
-				std::ofstream handle(filename);
-				// P3 [width] [height] [max intensity]
-				handle << "P3 " << width << " " << height << " 255\n";
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						auto pixel = pixels[y][x];
-						int r = pixel[0];
-						int g = pixel[1];
-						int b = pixel[2];
-						handle << r << " " << g << " " << b << " ";
-					}
-					handle << '\n';
-				}
+			GrayscaleImage toGrayscale();
+			ColorImage clone();
 
-				handle.close();
-			}
-
-			GrayscaleImage toGrayscale() {
-				GrayscaleImage result(width, height, max);
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						result.set(x, y, (pixels[y][x][0] + pixels[y][x][1] + pixels[y][x][2]) / 3);
-					}
-				}
-				return result;
-			}
-
-			ColorImage clone() {
-				ColorImage cloned(width, height);
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						auto pixel = get(x, y);
-						cloned.set(x, y, new int[3] {
-							pixel[0],
-							pixel[1],
-							pixel[2]
-						});
-					}
-				}
-				
-				return cloned;
-			}
-
-			static ColorImage fromPPM(std::string filename) {
-				std::ifstream handle(filename);
-				std::string _ppmtype;
-				handle >> _ppmtype;
-				int width, height, _max;
-				handle >> width >> height >> _max;
-
-				ColorImage image(width, height, _max);
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						int *pixel = new int[3];
-						handle >> pixel[0] >> pixel[1] >> pixel[2];
-						image.set(x, y, pixel);
-					}
-				}
-				handle.close();
-				return image;
-			}
+			static ColorImage fromPPM(std::string filename);
 	};
 
 	class GrayscaleImage {
@@ -126,114 +55,220 @@ namespace tjcv {
 			int max = 255;
 
 		public:
-			GrayscaleImage(int **pixels, int width, int height, int max = 255):
-				pixels(pixels),
-				width(width),
-				height(height),
-				max(max) {}
-
-			GrayscaleImage(int width, int height, int max = 255): width(width), height(height), max(max) {
-				this->pixels = new int*[height];
-				for (int y = 0; y < height; y++) {
-					this->pixels[y] = new int[width];
-					for (int x = 0; x < width; x++) {
-						this->pixels[y][x] = 0;
-					}
-				}
-			}
+			GrayscaleImage(int **pixels, int width, int height, int max = 255);
+			GrayscaleImage(int width, int height, int max = 255);
 	
-			void save(std::string filename) {
-				std::ofstream handle(filename);
-				// P2 [width] [height] [max intensity]
-				handle << "P2 " << width << " " << height << ' ' << max << '\n';
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						handle << abs(pixels[y][x]) << " ";
-					}
-					handle << '\n';
-				}
-
-				handle.close();
-			}
+			void save(std::string filename);
 			
-			void set(int x, int y, int value) {
-				if (x < 0 || y < 0) return;
-				if (x >= width || y >= height) return;
-				this->pixels[y][x] = value;
-			}
+			void set(int x, int y, int value);
+			int get(int x, int y);
 
-			int get(int x, int y) {
-				if (x < 0 || y < 0) return -1;
-				if (x >= width || y >= height) return -1;
-				return this->pixels[y][x];
-			}
+			int getMax();
+			int getWidth();
+			int getHeight();
+			std::pair<int, int> getSize();
 
-			int getMax() { return this->max; }
-			int getWidth() { return this->width; }
-			int getHeight() { return this->height; }
-			std::pair<int, int> getSize() { return { this->width, this->height }; }
+			ColorImage toColor();
 
-			ColorImage toColor() {
-				ColorImage color(width, height);
-				for (int y = 0; y < height; y++) {
-					for (int x = 0; x < width; x++) {
-						int intensity = pixels[y][x];
-						// R, G, and B are all the same value
-						color.set(x, y, new int[3] { intensity, intensity, intensity });
-					}
-				}
-
-				return color;
-			}
-
-			GrayscaleImage convolve(GrayscaleImage filter) {
-				dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
-
-				GrayscaleImage convolved(width, height, max);
-				int filterSum = 0;
-				for (int i = 0; i < filter.getHeight(); i++) {
-					for (int j = 0; j < filter.getWidth(); j++) {
-						filterSum += filter.get(i, j);
-					}
-				}
-				dbg("Filter sum: " << filterSum << '\n');
-
-				int filterRadiusX = filter.getWidth() >> 1;
-				int filterRadiusY = filter.getHeight() >> 1;
-				dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
-
-				// Initialize the edges to 0
-				for (int y = 0; y < height; y++) {
-					for (int i = 0; i < filterRadiusX; i++) {
-						convolved.set(i, y, 0);
-						convolved.set(width - i - 1, y, 0);
-					}
-				}
-
-				for (int x = 0; x < width; x++) {
-					for (int i = 0; i < filterRadiusY; i++) {
-						convolved.set(x, i, 0);
-						convolved.set(x, height - i - 1, 0);
-					}
-				}
-
-				for (int y = filterRadiusY; y < height - filterRadiusY; y++) {
-					for (int x = filterRadiusX; x < width - filterRadiusX; x++) {
-						int total = 0;
-						for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
-							for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
-								total += get(y + relativeY, x + relativeX) * filter.get(relativeY + filterRadiusY, relativeX + filterRadiusX);
-							}
-						}
-
-						convolved.set(x, y, filterSum != 0 ? (total / filterSum) : total);
-					}
-				}
-				
-				return convolved;
-			}
+			GrayscaleImage convolve(GrayscaleImage filter);
 	};
 
+	ColorImage::ColorImage(int width, int height, int max): width(width), height(height), max(max) {
+		this->pixels = new int**[height];
+		for (int y = 0; y < height; y++) {
+			this->pixels[y] = new int*[width];
+			for (int x = 0; x < width; x++) {
+				// Set to color white
+				this->pixels[y][x] = new int[3] { 0, 0, 0 };
+			}
+		}
+	}
+
+	void ColorImage::set(int x, int y, int *value) {
+		if (x < 0 || y < 0) return;
+		if (x >= width || y >= height) return;
+		this->pixels[y][x] = value;
+	}
+
+	int *ColorImage::get(int x, int y) {
+		if (x < 0 || y < 0) return nullptr;
+		if (x >= width || y >= height) return nullptr;
+		return this->pixels[y][x];
+	}
+
+	int ColorImage::getWidth() const { return this->width; }
+	int ColorImage::getHeight() const { return this->height; }
+	std::pair<int, int> ColorImage::getSize() const { return { this->width, this->height }; }
+
+	void ColorImage::save(std::string filename) {
+		std::ofstream handle(filename);
+		// P3 [width] [height] [max intensity]
+		handle << "P3 " << width << " " << height << " 255\n";
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				auto pixel = pixels[y][x];
+				int r = pixel[0];
+				int g = pixel[1];
+				int b = pixel[2];
+				handle << r << " " << g << " " << b << " ";
+			}
+			handle << '\n';
+		}
+
+		handle.close();
+	}
+
+	GrayscaleImage ColorImage::toGrayscale() {
+		GrayscaleImage result(width, height, max);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				result.set(x, y, (pixels[y][x][0] + pixels[y][x][1] + pixels[y][x][2]) / 3);
+			}
+		}
+		return result;
+	}
+
+	ColorImage ColorImage::clone() {
+		ColorImage cloned(width, height);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				auto pixel = get(x, y);
+				cloned.set(x, y, new int[3] {
+					pixel[0],
+					pixel[1],
+					pixel[2]
+				});
+			}
+		}
+		
+		return cloned;
+	}
+
+	ColorImage ColorImage::fromPPM(std::string filename) {
+		std::ifstream handle(filename);
+		std::string _ppmtype;
+		handle >> _ppmtype;
+		int width, height, _max;
+		handle >> width >> height >> _max;
+
+		ColorImage image(width, height, _max);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int *pixel = new int[3];
+				handle >> pixel[0] >> pixel[1] >> pixel[2];
+				image.set(x, y, pixel);
+			}
+		}
+		handle.close();
+		return image;
+	}
+
+	GrayscaleImage::GrayscaleImage(int **pixels, int width, int height, int max):
+		pixels(pixels),
+		width(width),
+		height(height),
+		max(max) {}
+
+	GrayscaleImage::GrayscaleImage(int width, int height, int max): width(width), height(height), max(max) {
+		this->pixels = new int*[height];
+		for (int y = 0; y < height; y++) {
+			this->pixels[y] = new int[width];
+			for (int x = 0; x < width; x++) {
+				this->pixels[y][x] = 0;
+			}
+		}
+	}
+	
+	void GrayscaleImage::save(std::string filename) {
+		std::ofstream handle(filename);
+		// P2 [width] [height] [max intensity]
+		handle << "P2 " << width << " " << height << ' ' << max << '\n';
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				handle << abs(pixels[y][x]) << " ";
+			}
+			handle << '\n';
+		}
+
+		handle.close();
+	}
+	
+	void GrayscaleImage::set(int x, int y, int value) {
+		if (x < 0 || y < 0) return;
+		if (x >= width || y >= height) return;
+		this->pixels[y][x] = value;
+	}
+
+	int GrayscaleImage::get(int x, int y) {
+		if (x < 0 || y < 0) return -1;
+		if (x >= width || y >= height) return -1;
+		return this->pixels[y][x];
+	}
+
+	int GrayscaleImage::getMax() { return this->max; }
+	int GrayscaleImage::getWidth() { return this->width; }
+	int GrayscaleImage::getHeight() { return this->height; }
+	std::pair<int, int> GrayscaleImage::getSize() { return { this->width, this->height }; }
+
+	ColorImage GrayscaleImage::toColor() {
+		ColorImage color(width, height);
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				int intensity = pixels[y][x];
+				// R, G, and B are all the same value
+				color.set(x, y, new int[3] { intensity, intensity, intensity });
+			}
+		}
+
+		return color;
+	}
+
+	GrayscaleImage GrayscaleImage::convolve(GrayscaleImage filter) {
+		dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
+
+		GrayscaleImage convolved(width, height, max);
+		int filterSum = 0;
+		for (int i = 0; i < filter.getHeight(); i++) {
+			for (int j = 0; j < filter.getWidth(); j++) {
+				filterSum += filter.get(i, j);
+			}
+		}
+		dbg("Filter sum: " << filterSum << '\n');
+
+		int filterRadiusX = filter.getWidth() >> 1;
+		int filterRadiusY = filter.getHeight() >> 1;
+		dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
+
+		// Initialize the edges to 0
+		for (int y = 0; y < height; y++) {
+			for (int i = 0; i < filterRadiusX; i++) {
+				convolved.set(i, y, 0);
+				convolved.set(width - i - 1, y, 0);
+			}
+		}
+
+		for (int x = 0; x < width; x++) {
+			for (int i = 0; i < filterRadiusY; i++) {
+				convolved.set(x, i, 0);
+				convolved.set(x, height - i - 1, 0);
+			}
+		}
+
+		for (int y = filterRadiusY; y < height - filterRadiusY; y++) {
+			for (int x = filterRadiusX; x < width - filterRadiusX; x++) {
+				int total = 0;
+				for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
+					for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
+						total += get(y + relativeY, x + relativeX) * filter.get(relativeY + filterRadiusY, relativeX + filterRadiusX);
+					}
+				}
+
+				convolved.set(x, y, filterSum != 0 ? (total / filterSum) : total);
+			}
+		}
+		
+		return convolved;
+	}
 	typedef struct {
 		int x, y;
 		double radius;
