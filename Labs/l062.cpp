@@ -714,7 +714,7 @@ namespace lab6 {
 		int radius,
 		double unconnectedScore,
 		double connectedScore) {
-		double count = 0;
+		double score = 0;
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
 		for (const auto& pixel : pixels) {
 			int px = pixel.first;
@@ -722,13 +722,22 @@ namespace lab6 {
 			if (tjcv::inbounds(px, py, edges.getWidth(), edges.getHeight())) {
 				if (edges.get(px, py) > 0) {
 					// Check if it has a neighboring edge
+					bool hasNeighbor = false;
+					for (int i = -1; i <= 1; i++) {
+						for (int j = -1; j <= 1; j++) {
+							if (edges.get(i, j) > 0) {
+								hasNeighbor = true;
+								break;
+							}
+						}
+					}
 					
-					count++;
+					score += hasNeighbor * connectedScore + !hasNeighbor * unconnectedScore;
 				}
 			}
 		}
 
-		return count;
+		return score;
 	}
 
 	/**
