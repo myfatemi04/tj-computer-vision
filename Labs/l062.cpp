@@ -34,7 +34,7 @@ namespace tjcv {
 					this->pixels[y] = new int*[width];
 					for (int x = 0; x < width; x++) {
 						// Set to color white
-						this->pixels[y][x] = new int[3] { max, max, max };
+						this->pixels[y][x] = new int[3] { 0, 0, 0 };
 					}
 				}
 			}
@@ -74,14 +74,13 @@ namespace tjcv {
 			}
 
 			GrayscaleImage toGrayscale() {
-				int** _pixels = new int*[height];
+				GrayscaleImage result(width, height, max);
 				for (int y = 0; y < height; y++) {
-					_pixels[y] = new int[width];
 					for (int x = 0; x < width; x++) {
-						_pixels[y][x] = (pixels[y][x][0] + pixels[y][x][1] + pixels[y][x][2]) / 3;
+						result.set(x, y, (pixels[y][x][0] + pixels[y][x][1] + pixels[y][x][2]) / 3);
 					}
 				}
-				return { _pixels, width, height, max };
+				return result;
 			}
 
 			ColorImage clone() {
@@ -120,11 +119,120 @@ namespace tjcv {
 			}
 	};
 
-	typedef struct {
-		int** pixels;
-		int width, height;
-		int max = 255;
-	} GrayscaleImage;
+	class GrayscaleImage {
+		private:
+			int** pixels;
+			int width, height;
+			int max = 255;
+
+		public:
+			GrayscaleImage(int **pixels, int width, int height, int max = 255):
+				pixels(pixels),
+				width(width),
+				height(height),
+				max(max) {}
+
+			GrayscaleImage(int width, int height, int max = 255): width(width), height(height), max(max) {
+				this->pixels = new int*[height];
+				for (int y = 0; y < height; y++) {
+					this->pixels[y] = new int[width];
+					for (int x = 0; x < width; x++) {
+						this->pixels[y][x] = 0;
+					}
+				}
+			}
+	
+			void save(std::string filename) {
+				std::ofstream handle(filename);
+				// P2 [width] [height] [max intensity]
+				handle << "P2 " << width << " " << height << ' ' << max << '\n';
+				for (int y = 0; y < height; y++) {
+					for (int x = 0; x < width; x++) {
+						handle << abs(pixels[y][x]) << " ";
+					}
+					handle << '\n';
+				}
+
+				handle.close();
+			}
+			
+			void set(int x, int y, int value) {
+				if (x < 0 || y < 0) return;
+				if (x >= width || y >= height) return;
+				this->pixels[y][x] = value;
+			}
+
+			int get(int x, int y) {
+				if (x < 0 || y < 0) return -1;
+				if (x >= width || y >= height) return -1;
+				return this->pixels[y][x];
+			}
+
+			int getMax() { return this->max; }
+			int getWidth() { return this->width; }
+			int getHeight() { return this->height; }
+			std::pair<int, int> getSize() { return { this->width, this->height }; }
+
+			ColorImage toColor() {
+				ColorImage color(width, height);
+				for (int y = 0; y < height; y++) {
+					for (int x = 0; x < width; x++) {
+						int intensity = pixels[y][x];
+						// R, G, and B are all the same value
+						color.set(x, y, new int[3] { intensity, intensity, intensity });
+					}
+				}
+
+				return color;
+			}
+
+			GrayscaleImage convolve(GrayscaleImage filter) {
+				dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
+
+				GrayscaleImage convolved(width, height, max);
+				int filterSum = 0;
+				for (int i = 0; i < filter.getHeight(); i++) {
+					for (int j = 0; j < filter.getWidth(); j++) {
+						filterSum += filter.get(i, j);
+					}
+				}
+				dbg("Filter sum: " << filterSum << '\n');
+
+				int filterRadiusX = filter.getWidth() >> 1;
+				int filterRadiusY = filter.getHeight() >> 1;
+				dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
+
+				// Initialize the edges to 0
+				for (int y = 0; y < height; y++) {
+					for (int i = 0; i < filterRadiusX; i++) {
+						convolved.set(i, y, 0);
+						convolved.set(width - i - 1, y, 0);
+					}
+				}
+
+				for (int x = 0; x < width; x++) {
+					for (int i = 0; i < filterRadiusY; i++) {
+						convolved.set(x, i, 0);
+						convolved.set(x, height - i - 1, 0);
+					}
+				}
+
+				for (int y = filterRadiusY; y < height - filterRadiusY; y++) {
+					for (int x = filterRadiusX; x < width - filterRadiusX; x++) {
+						int total = 0;
+						for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
+							for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
+								total += get(y + relativeY, x + relativeX) * filter.get(relativeY + filterRadiusY, relativeX + filterRadiusX);
+							}
+						}
+
+						convolved.set(x, y, filterSum != 0 ? (total / filterSum) : total);
+					}
+				}
+				
+				return convolved;
+			}
+	};
 
 	typedef struct {
 		int x, y;
@@ -182,36 +290,6 @@ namespace tjcv {
 				}
 			}
 		};
-
-	void saveGrayscalePPM(std::string filename, GrayscaleImage image) {
-		std::ofstream handle(filename);
-		// P2 [width] [height] [max intensity]
-		handle << "P2 " << image.width << " " << image.height << ' ' << image.max << '\n';
-		for (int y = 0; y < image.height; y++) {
-			for (int x = 0; x < image.width; x++) {
-				handle << abs(image.pixels[y][x]) << " ";
-			}
-			handle << '\n';
-		}
-
-		handle.close();
-	}
-
-	/**
-	 * This simply creates a color image by taking the gray value and using it as the R, G, and B values.
-	 */
-	ColorImage convertToColor(GrayscaleImage gray) {
-		ColorImage color(gray.width, gray.height);
-		for (int y = 0; y < gray.height; y++) {
-			for (int x = 0; x < gray.width; x++) {
-				int intensity = gray.pixels[y][x];
-				// R, G, and B are all the same value
-				color.set(x, y, new int[3] { intensity, intensity, intensity });
-			}
-		}
-
-		return color;
-	}
 
 	/**
 	 * getCirclePixels returns a vector of (x, y) pixels. It uses an iterative, symmetric method of
@@ -281,56 +359,6 @@ namespace tjcv {
 
 	bool inbounds(int x, int y, int maxX, int maxY) {
 		return (x >= 0 && x < maxX) && (y >= 0 && y < maxY);
-	}
-
-	GrayscaleImage convolve(GrayscaleImage image, GrayscaleImage filter) {
-		dbg("Convolving an image around a filter " << filter.width << "x" << filter.height << '\n');
-
-		auto pixels = new int*[image.height];
-		
-		int filterSum = 0;
-		for (int i = 0; i < filter.height; i++) {
-			for (int j = 0; j < filter.width; j++) {
-				filterSum += filter.pixels[i][j];
-			}
-		}
-		dbg("Filter sum: " << filterSum << '\n');
-
-		int filterRadiusX = filter.width >> 1;
-		int filterRadiusY = filter.height >> 1;
-		dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
-
-		// Initialize the edges to 0
-		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new int[image.width];
-			for (int i = 0; i < filterRadiusX; i++) {
-				pixels[y][i] = 0;
-				pixels[y][image.width - i - 1] = 0;
-			}
-		}
-		for (int x = 0; x < image.width; x++) {
-			for (int i = 0; i < filterRadiusY; i++) {
-				pixels[i][x] = 0;
-				pixels[image.height - i - 1][x] = 0;
-			}
-		}
-
-		for (int y = filterRadiusY; y < image.height - filterRadiusY; y++) {
-			for (int x = filterRadiusX; x < image.width - filterRadiusX; x++) {
-				int total = 0;
-				for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
-					for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
-						total += image.pixels[y + relativeY][x + relativeX] * filter.pixels[relativeY + filterRadiusY][relativeX + filterRadiusX];
-					}
-				}
-				if (filterSum == 0) {
-					pixels[y][x] = total;
-				} else {
-					pixels[y][x] = total / filterSum;
-				}
-			}
-		}
-		return { pixels, image.width, image.height };
 	}
 
 	const double SIN45 = sqrt(2) / 2;
@@ -414,24 +442,18 @@ namespace lab5 {
 	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold) {
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
-		GrayscaleImage newImage {
-			new int*[magnitudes.height],
-			magnitudes.width,
-			magnitudes.height,
-			1
-		};
+		GrayscaleImage newImage(magnitudes.getWidth(), magnitudes.getHeight(), 1);
 
-		for (int y = 0; y < magnitudes.height; y++) {
-			newImage.pixels[y] = new int[magnitudes.width];
-			for (int x = 0; x < magnitudes.width; x++) {
-				int pixelValue = magnitudes.pixels[y][x];
+		for (int y = 0; y < magnitudes.getHeight(); y++) {
+			for (int x = 0; x < magnitudes.getWidth(); x++) {
+				int pixelValue = magnitudes.get(x, y);
 				if (pixelValue > upperThreshold) {
 					unvisited.insert({ x, y });
-					newImage.pixels[y][x] = 2;
+					newImage.set(x, y, 2);
 				} else if (pixelValue > lowerThreshold) {
-					newImage.pixels[y][x] = 1;
+					newImage.set(x, y, 1);
 				} else {
-					newImage.pixels[y][x] = 0;
+					newImage.set(x, y, 0);
 				}
 			}
 		}
@@ -447,26 +469,26 @@ namespace lab5 {
 			// Check nearby locations. x_ and y_ represent points around the current pixel.
 			for (int x_ = x - 1; x_ <= x + 1; x_++) {
 				// Boundary check
-				if (x_ < 0 || x_ >= magnitudes.width) continue;
+				if (x_ < 0 || x_ >= magnitudes.getWidth()) continue;
 				for (int y_ = y - 1; y_ <= y + 1; y_++) {
 					// Boundary check
-					if (y_ < 0 || y_ >= magnitudes.height) continue;
+					if (y_ < 0 || y_ >= magnitudes.getHeight()) continue;
 
 					// If the current value is 1 (reached lower threshold, but not upper threshold),
 					// then because it touches a strong edge with a value of 2, it is automatically
 					// promoted. Then, we add it to the queue to update its neighbors as well.
-					if (newImage.pixels[y_][x_] == 1) {
-						newImage.pixels[y_][x_] = 2;
+					if (newImage.get(x_, y_) == 1) {
+						newImage.set(x_, y_, 2);
 						unvisited.insert({x_, y_});
 					}
 				}
 			}
 		}
 
-		for (int y = 0; y < newImage.height; y++) {
-			for (int x = 0; x < newImage.width; x++) {
+		for (int y = 0; y < newImage.getHeight(); y++) {
+			for (int x = 0; x < newImage.getWidth(); x++) {
 				// Convert 2 to 1, and 1 to 0.
-				newImage.pixels[y][x] >>= 1;
+				newImage.set(x, y, newImage.get(x, y) >> 1);
 			}
 		}
 
@@ -486,20 +508,16 @@ namespace lab5 {
 	 * If a pixel along an edge is not the strongest edge along its gradient, it is suppressed.
 	 */
 	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient, GrayscaleImage magnitudes) {
-		int width = xGradient.width;
-		int height = xGradient.height;
-
-		int **newPixels = new int*[height];
-		for (int y = 0; y < height; y++) {
-			newPixels[y] = new int[width];
-
-			for (int x = 0; x < width; x++) {
-				newPixels[y][x] = 0;
-
-				double currentMagnitude = magnitudes.pixels[y][x];
+		int width = xGradient.getWidth();
+		int height = xGradient.getHeight();
+		GrayscaleImage im(width, height, 1);
+		for (int y = 0; y < xGradient.getWidth(); y++) {
+			for (int x = 0; x < xGradient.getHeight(); x++) {
+				im.set(x, y, 0);
+				double currentMagnitude = magnitudes.get(x, y);
 
 				// angle is in the range [-pi, pi].
-				double angleRadians = atan2(yGradient.pixels[y][x], xGradient.pixels[y][x]);
+				double angleRadians = atan2(yGradient.get(x, y), xGradient.get(x, y));
 				double angleDegrees = angleRadians / (3.1415926535897932) / 2 * 360;
 
 				// Find the amount to go in the X and Y directions to follow the gradient
@@ -523,55 +541,49 @@ namespace lab5 {
 				// std::cout << angleDegrees << ": " << dx << ", " << dy << '\n';
 
 				if (inBounds(x + dx, y + dy, width, height)) {
-					if (currentMagnitude > magnitudes.pixels[y + dy][x + dx]) {
+					if (currentMagnitude > magnitudes.get(x + dx, y + dy)) {
 						if (inBounds(x - dx, y - dy, width, height)) {
-							if (currentMagnitude > magnitudes.pixels[y - dy][x - dx]) {
-								newPixels[y][x] = 1;
+							if (currentMagnitude > magnitudes.get(x - dx, y - dy)) {
+								im.set(x, y, 1);
 							}
 						}
 					}
 				}
 			}
 		}
-
-		return GrayscaleImage { newPixels, width, height, 1 };
+		
+		return im;
 	}
 
 	GrayscaleImage combineSobel(GrayscaleImage first, GrayscaleImage second) {
-		int** pixels = new int*[first.height];
-		for (int y = 0; y < first.height; y++) {
-			pixels[y] = new int[first.width];
-			for (int x = 0; x < first.width; x++) {
-				pixels[y][x] = (int) sqrt(findMagnitudeSquared(first.pixels[y][x], second.pixels[y][x]));
+		GrayscaleImage combined(first.getWidth(), first.getHeight(), first.getMax());
+		for (int y = 0; y < first.getHeight(); y++) {
+			for (int x = 0; x < first.getWidth(); x++) {
+				combined.set(x, y, (int) sqrt(findMagnitudeSquared(first.get(x, y), second.get(x, y))));
 			}
 		}
-
-		return { pixels, first.width, first.height };
+		
+		return combined;
 	}
 
 	GrayscaleImage applyThreshold(GrayscaleImage image, double threshold) {
-		int** pixels = new int*[image.height];
-		for (int y = 0; y < image.height; y++) {
-			pixels[y] = new int[image.width];
-			for (int x = 0; x < image.width; x++) {
-				pixels[y][x] = image.pixels[y][x] >= threshold ? 255 : 0;
+		GrayscaleImage result(image.getWidth(), image.getHeight(), image.getMax());
+		for (int y = 0; y < image.getHeight(); y++) {
+			for (int x = 0; x < image.getWidth(); x++) {
+				result.set(x, y, image.get(x, y) >= threshold ? image.getMax() : 0);
 			}
 		}
 
-		return { pixels, image.width, image.height };
+		return result;
 	}
 
 	GrayscaleImage combineImages(GrayscaleImage afterHysteresis, GrayscaleImage afterNonMaxSuppression) {
-		GrayscaleImage newImage = { new int*[afterHysteresis.height], afterHysteresis.width, afterHysteresis.height, 1 };
+		GrayscaleImage newImage(afterHysteresis.getWidth(), afterHysteresis.getHeight(), afterHysteresis.getMax());
 
-		for (int y = 0; y < afterHysteresis.height; y++) {
-			newImage.pixels[y] = new int[afterHysteresis.width];
-			for (int x = 0; x < afterHysteresis.width; x++) {
-				if (afterHysteresis.pixels[y][x] != 0 && afterNonMaxSuppression.pixels[y][x] != 0) {
-					newImage.pixels[y][x] = 1;
-				} else {
-					newImage.pixels[y][x] = 0;
-				}
+		for (int y = 0; y < afterHysteresis.getHeight(); y++) {
+			for (int x = 0; x < afterHysteresis.getWidth(); x++) {
+				bool bothValid = afterHysteresis.get(x, y) != 0 && afterNonMaxSuppression.get(x, y) != 0;
+				newImage.set(x, y, bothValid);
 			}
 		}
 
@@ -581,12 +593,12 @@ namespace lab5 {
 	/**
 	 * Returns a 2D array of radian angle measures with the same dimensions as the input images.
 	 */
-	double ** getEdgeAnglesFromGradients(GrayscaleImage xGradient, GrayscaleImage yGradient) {
-		double ** measures = new double*[xGradient.height];
-		for (int y = 0; y < xGradient.height; y++) {
-			measures[y] = new double[xGradient.width];
-			for (int x = 0; x < xGradient.width; x++) {
-				measures[y][x] = atan2(yGradient.pixels[y][x], xGradient.pixels[y][x]);
+	double **getEdgeAnglesFromGradients(GrayscaleImage xGradient, GrayscaleImage yGradient) {
+		double **measures = new double*[xGradient.getHeight()];
+		for (int y = 0; y < xGradient.getHeight(); y++) {
+			measures[y] = new double[xGradient.getWidth()];
+			for (int x = 0; x < xGradient.getWidth(); x++) {
+				measures[y][x] = atan2(yGradient.get(x, y), xGradient.get(x, y));
 			}
 		}
 
@@ -601,22 +613,20 @@ namespace lab5 {
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
 		// GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
-		GrayscaleImage xGradient = convolve(grayscale, horizontalSobel);
-		GrayscaleImage yGradient = convolve(grayscale, verticalSobel);
+		GrayscaleImage xGradient = grayscale.convolve(horizontalSobel);
+		GrayscaleImage yGradient = grayscale.convolve(verticalSobel);
 		
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
 
-		EdgeDetectionResult result;
-		result.edges = combineImages(afterHysteresis, afterNonMaxSuppression);
-		// tjcv::saveGrayscalePPM("image_h.ppm", afterHysteresis);
-		result.angles = getEdgeAnglesFromGradients(xGradient, yGradient);
-		result.xGradient = xGradient;
-		result.yGradient = yGradient;
-		
-		return result;
+		return EdgeDetectionResult {
+			combineImages(afterHysteresis, afterNonMaxSuppression),
+			getEdgeAnglesFromGradients(xGradient, yGradient),
+			xGradient,
+			yGradient
+		};
 	}
 }
 
@@ -661,12 +671,12 @@ namespace lab6 {
 	}
 
 	int **castVotes(GrayscaleImage edges, double **angles, int rayWidth = 0) {
-		int **votes = tjcv::make2DIntArray(edges.height, edges.width);
+		int **votes = tjcv::make2DIntArray(edges.getHeight(), edges.getWidth());
 
-		for (int y = 0; y < edges.height; y++) {
-			for (int x = 0; x < edges.width; x++) {
-				if (edges.pixels[y][x]) {
-					castVotesForOnePixel(votes, x, y, edges.width, edges.height, angles[y][x], rayWidth);
+		for (int y = 0; y < edges.getHeight(); y++) {
+			for (int x = 0; x < edges.getWidth(); x++) {
+				if (edges.get(x, y)) {
+					castVotesForOnePixel(votes, x, y, edges.getWidth(), edges.getHeight(), angles[y][x], rayWidth);
 				}
 			}
 		}
@@ -709,8 +719,8 @@ namespace lab6 {
 		for (const auto& pixel : pixels) {
 			int px = pixel.first;
 			int py = pixel.second;
-			if (tjcv::inbounds(px, py, edges.width, edges.height)) {
-				if (edges.pixels[py][px] > 0) {
+			if (tjcv::inbounds(px, py, edges.getWidth(), edges.getHeight())) {
+				if (edges.get(px, py) > 0) {
 					// Check if it has a neighboring edge
 					
 					count++;
@@ -778,18 +788,7 @@ namespace lab6 {
 			}
 		}
 
-		GrayscaleImage image;
-		image.width = width;
-		image.height = height;
-		image.pixels = new int*[height];
-		image.max = maxIntensity;
-		for (int y = 0; y < height; y++) {
-			image.pixels[y] = new int[width];
-			for (int x = 0; x < width; x++) {
-				image.pixels[y][x] = votes[y][x];
-			}
-		}
-		return image;
+		return GrayscaleImage { votes, width, height, maxIntensity };
 	}
 
 	void part1() {
@@ -800,15 +799,15 @@ namespace lab6 {
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscale, 160, 180);
-		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
+		detection.edges.save("imagef.ppm");
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
-		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
-		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
+		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.getWidth(), detection.edges.getHeight());
+		votesGraph.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscale.width, grayscale.height, 200);
+		auto centers = lab6::findCenters(votes, grayscale.getWidth(), grayscale.getHeight(), 200);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -843,15 +842,15 @@ namespace lab6 {
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, 160, 180);
-		tjcv::saveGrayscalePPM("imagef.ppm", detection.edges);
+		detection.edges.save("imagef.ppm");
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
-		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.width, detection.edges.height);
-		tjcv::saveGrayscalePPM("imagev.ppm", votesGraph);
+		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.getWidth(), detection.edges.getHeight());
+		votesGraph.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscaleImage.width, grayscaleImage.height, 200);
+		auto centers = lab6::findCenters(votes, grayscaleImage.getWidth(), grayscaleImage.getHeight(), 200);
 
 		dbg("Found " << centers.size() << " centers\n");
 
