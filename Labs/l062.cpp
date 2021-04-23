@@ -259,7 +259,7 @@ namespace tjcv {
 				int total = 0;
 				for (int relativeX = -filterRadiusX; relativeX <= filterRadiusX; relativeX++) {
 					for (int relativeY = -filterRadiusY; relativeY <= filterRadiusY; relativeY++) {
-						total += get(y + relativeY, x + relativeX) * filter.get(relativeY + filterRadiusY, relativeX + filterRadiusX);
+						total += get(x + relativeX, y + relativeY) * filter.get(relativeX + filterRadiusX, relativeY + filterRadiusY);
 					}
 				}
 
@@ -802,19 +802,17 @@ namespace lab6 {
 			int ringMaxEdgeCount = tjcv::countPixelsToDrawCircle(radius);
 
 			// Ring radii must be in the interval requested
-			int ringStartRadius  = max(minRadius, radius - ringWidth);
-			int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
+			int ringStartRadius = radius;
+			int ringEndRadius   = min(radius + 1, maxRadius - 1);
+			// int ringStartRadius  = max(minRadius, radius - ringWidth);
+			// int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
 
 			for (int ringRadius = ringStartRadius; ringRadius <= ringEndRadius; ringRadius++) {
 				// ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
 				ringEdgeCount    += edgesByRadius[ringRadius - minRadius];
 			}
 
-			double ratio = ((double) ringEdgeCount / ringMaxEdgeCount);
-			if (radius < 30 && radius > 10) {
-				dbg("found/max (=): " << ringEdgeCount << "/" << ringMaxEdgeCount << "(" << ratio << ")\n");
-			}
-
+			double ratio = (double) ringEdgeCount / ringMaxEdgeCount;
 			if (ratio > minRatio) {
 				radii.push_back(radius);
 			}
