@@ -67,6 +67,7 @@ namespace tjcv {
 			int getWidth();
 			int getHeight();
 			std::pair<int, int> getSize();
+			void setMax(int max);
 
 			ColorImage toColor();
 
@@ -210,6 +211,8 @@ namespace tjcv {
 	int GrayscaleImage::getHeight() { return this->height; }
 	std::pair<int, int> GrayscaleImage::getSize() { return { this->width, this->height }; }
 
+	void GrayscaleImage::setMax(int max) { this->max = max; }
+
 	ColorImage GrayscaleImage::toColor() {
 		ColorImage color(width, height);
 		for (int y = 0; y < height; y++) {
@@ -224,7 +227,7 @@ namespace tjcv {
 	}
 
 	GrayscaleImage GrayscaleImage::convolve(GrayscaleImage filter) {
-		dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
+		// dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
 
 		GrayscaleImage convolved(width, height, max);
 		int filterSum = 0;
@@ -233,11 +236,11 @@ namespace tjcv {
 				filterSum += filter.get(i, j);
 			}
 		}
-		dbg("Filter sum: " << filterSum << '\n');
+		// dbg("Filter sum: " << filterSum << '\n');
 
 		int filterRadiusX = filter.getWidth() >> 1;
 		int filterRadiusY = filter.getHeight() >> 1;
-		dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
+		// dbg("Filter radius: " << filterRadiusX << ", " << filterRadiusY << '\n');
 
 		// Initialize the edges to 0
 		for (int y = 0; y < height; y++) {
@@ -430,6 +433,7 @@ namespace lab5 {
 	typedef struct {
 		GrayscaleImage edges;
 		double** angles;
+		GrayscaleImage magnitudes;
 		GrayscaleImage xGradient, yGradient;
 	} EdgeDetectionResult;
 
@@ -592,11 +596,17 @@ namespace lab5 {
 
 	GrayscaleImage combineSobel(GrayscaleImage first, GrayscaleImage second) {
 		GrayscaleImage combined(first.getWidth(), first.getHeight(), first.getMax());
+		int max = 1;
 		for (int y = 0; y < first.getHeight(); y++) {
 			for (int x = 0; x < first.getWidth(); x++) {
-				combined.set(x, y, (int) sqrt(findMagnitudeSquared(first.get(x, y), second.get(x, y))));
+				int value = (int) sqrt(findMagnitudeSquared(first.get(x, y), second.get(x, y)));
+				combined.set(x, y, value);
+				if (value > max) {
+					max = value;
+				}
 			}
 		}
+		combined.setMax(max);
 		
 		return combined;
 	}
@@ -659,6 +669,7 @@ namespace lab5 {
 		return EdgeDetectionResult {
 			combineImages(afterHysteresis, afterNonMaxSuppression),
 			getEdgeAnglesFromGradients(xGradient, yGradient),
+			magnitudes,
 			xGradient,
 			yGradient
 		};
@@ -743,7 +754,7 @@ namespace lab6 {
 	 * higher score than other edges.
 	 */
 	double scoreCircleCandidate(
-		GrayscaleImage edges,
+		GrayscaleImage magnitudes,
 		int x,
 		int y,
 		int radius,
@@ -751,25 +762,24 @@ namespace lab6 {
 		double connectedScore) {
 		double score = 0;
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
+
 		for (const auto& pixel : pixels) {
-			int px = pixel.first;
-			int py = pixel.second;
-			if (tjcv::inbounds(px, py, edges.getWidth(), edges.getHeight())) {
-				if (edges.get(px, py) > 0) {
-					// Check if it has a neighboring edge
-					bool hasNeighbor = false;
-					for (int i = -1; i <= 1; i++) {
-						for (int j = -1; j <= 1; j++) {
-							if (edges.get(i, j) > 0) {
-								hasNeighbor = true;
-								break;
-							}
-						}
-					}
-					
-					score += hasNeighbor * connectedScore + !hasNeighbor * unconnectedScore;
-				}
-			}
+			// Try using a sliding scale of magnitudes
+			score += (double) magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
+			// if (magnitudes.get(pixel.first, pixel.second) > 0) {
+			// 	// Check if it has a neighboring edge
+			// 	bool hasNeighbor = false;
+			// 	for (int i = -1; i <= 1; i++) {
+			// 		for (int j = -1; j <= 1; j++) {
+			// 			if (magnitudes.get(i, j) > 0) {
+			// 				hasNeighbor = true;
+			// 				break;
+			// 			}
+			// 		}
+			// 	}
+				
+			// 	score += hasNeighbor * connectedScore + !hasNeighbor * unconnectedScore;
+			// }
 		}
 
 		return score;
@@ -779,7 +789,7 @@ namespace lab6 {
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minRatio specifies the minimum ratio of empty edges to fillled edges.
 	 */
 	std::vector<int> findRadii(
-		GrayscaleImage edges,
+		GrayscaleImage magnitudes,
 		int x,
 		int y,
 		int minRadius,
@@ -789,7 +799,7 @@ namespace lab6 {
 		// Count the edges on each radius
 		double *edgesByRadius = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			edgesByRadius[radius - minRadius] = scoreCircleCandidate(edges, x, y, radius, 0.5, 1);
+			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, x, y, radius, 0.5, 1);
 		}
 		
 		std::vector<int> radii;
@@ -815,6 +825,8 @@ namespace lab6 {
 			double ratio = (double) ringEdgeCount / ringMaxEdgeCount;
 			if (ratio > minRatio) {
 				radii.push_back(radius);
+			} else if (ratio > minRatio / 2) {
+				// dbg("Found almost circle with ratio " << ratio << '\n');
 			}
 		}
 		return radii;
@@ -883,8 +895,9 @@ namespace lab6 {
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscaleImage, 160, 180);
+		auto detection = lab5::detectEdges(grayscaleImage, 80, 180);
 		detection.edges.save("imagef.ppm");
+		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
@@ -907,7 +920,7 @@ namespace lab6 {
 			int y = center.second;
 			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.edges, x, y, 10, 30, 2, 0.9);
+			auto radii = lab6::findRadii(detection.magnitudes, x, y, 10, 30, 2, 0.5);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
@@ -919,7 +932,7 @@ namespace lab6 {
 		dbg("Found " << foundRadiusCount << " radii\n");
 		dbg("Saving\n");
 
-		colorImage.save("imagecircles.ppm");
+		colorImage.save("coins.ppm");
 	}
 }
 
