@@ -22,6 +22,11 @@ int min(int a, int b) {
 	return (a < b) ? a : b;
 }
 namespace tjcv {
+	/*
+		This value is calculated by running the sobel operator along a perfect edge (0-->255).
+	*/
+	const double MAX_POSSIBLE_EDGE_GRADIENT = (2 * (127 + 127 * 2 + 127));
+
 	class GrayscaleImage;
 	class ColorImage;
 
@@ -750,11 +755,12 @@ namespace lab6 {
 	/**
 	 * scoreCircleCandidate scores the likelihood of a radius being a circle.
 	 * The way it does this is by iterating over the pixels that would compose a circle.
-	 * If a pixel is an edge, and also connected to other edges, then it will receive a
-	 * higher score than other edges.
+	 * The magnitude of the pixel's value multiplied by how well it's angled towards the center
+	 * are accumulated for each pixel to produce a total score.
 	 */
 	double scoreCircleCandidate(
 		GrayscaleImage magnitudes,
+		double **angles,
 		int x,
 		int y,
 		int radius) {
@@ -762,24 +768,21 @@ namespace lab6 {
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
 
 		for (const auto& pixel : pixels) {
-			// Try using a sliding scale of magnitudes
-			// score += (double) magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
-			if (magnitudes.get(pixel.first, pixel.second) > 0) {
-				// Check neighboring edges
-				double neighborMagnitudes = 0;
-				for (int i = -1; i <= 1; i++) {
-					for (int j = -1; j <= 1; j++) {
-						if (i == 0 || j == 0) {
-							continue;
-						}
-						neighborMagnitudes += magnitudes.get(pixel.first + i, pixel.first + j);
-					}
-				}
+			int pixelX = pixel.first;
+			int pixelY = pixel.second;
 
-				if (neighborMagnitudes > (magnitudes.getMax() / 4)) {
-					score += magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
-				}
-			}
+			double intendedAngle = atan2((double) (pixelY - y), (double) (pixelX - x));
+			double actualAngle = angles[y][x];
+
+			// Using geometry, the minimum distance from a ray cast along the gradient of the edge pixel
+			// would be equal to sin(theta), where theta is the angle between the ray from the center to
+			// the edge and the ray along the edge's gradient.
+
+			double theta = actualAngle - intendedAngle;
+			double rayMinimumDistanceFromCenter = abs(sin(theta));
+
+			score += rayMinimumDistanceFromCenter * magnitudes.get(pixel.first, pixel.second) / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
+
 		}
 
 		return score;
@@ -790,6 +793,7 @@ namespace lab6 {
 	 */
 	std::vector<int> findRadii(
 		GrayscaleImage magnitudes,
+		double **angles,
 		int x,
 		int y,
 		int minRadius,
@@ -799,7 +803,7 @@ namespace lab6 {
 		// Count the edges on each radius
 		double *edgesByRadius = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, x, y, radius);
+			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, angles, x, y, radius);
 		}
 		
 		std::vector<int> radii;
@@ -826,7 +830,7 @@ namespace lab6 {
 			if (ratio > minRatio) {
 				radii.push_back(radius);
 			} else if (ratio > minRatio / 2) {
-				// dbg("Found almost circle with ratio " << ratio << '\n');
+				dbg("Found almost circle with ratio " << ratio << '\n');
 			}
 		}
 		return radii;
@@ -920,7 +924,7 @@ namespace lab6 {
 			int y = center.second;
 			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, x, y, 10, 30, 2, 0.9);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 10, 30, 2, 0.9);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
