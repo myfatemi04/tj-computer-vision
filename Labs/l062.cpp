@@ -757,29 +757,29 @@ namespace lab6 {
 		GrayscaleImage magnitudes,
 		int x,
 		int y,
-		int radius,
-		double unconnectedScore,
-		double connectedScore) {
+		int radius) {
 		double score = 0;
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
 
 		for (const auto& pixel : pixels) {
 			// Try using a sliding scale of magnitudes
-			score += (double) magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
-			// if (magnitudes.get(pixel.first, pixel.second) > 0) {
-			// 	// Check if it has a neighboring edge
-			// 	bool hasNeighbor = false;
-			// 	for (int i = -1; i <= 1; i++) {
-			// 		for (int j = -1; j <= 1; j++) {
-			// 			if (magnitudes.get(i, j) > 0) {
-			// 				hasNeighbor = true;
-			// 				break;
-			// 			}
-			// 		}
-			// 	}
-				
-			// 	score += hasNeighbor * connectedScore + !hasNeighbor * unconnectedScore;
-			// }
+			// score += (double) magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
+			if (magnitudes.get(pixel.first, pixel.second) > 0) {
+				// Check neighboring edges
+				double neighborMagnitudes = 0;
+				for (int i = -1; i <= 1; i++) {
+					for (int j = -1; j <= 1; j++) {
+						if (i == 0 || j == 0) {
+							continue;
+						}
+						neighborMagnitudes += magnitudes.get(pixel.first + i, pixel.first + j);
+					}
+				}
+
+				if (neighborMagnitudes > (magnitudes.getMax() / 4)) {
+					score += magnitudes.get(pixel.first, pixel.second) / magnitudes.getMax();
+				}
+			}
 		}
 
 		return score;
@@ -799,7 +799,7 @@ namespace lab6 {
 		// Count the edges on each radius
 		double *edgesByRadius = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, x, y, radius, 0.5, 1);
+			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, x, y, radius);
 		}
 		
 		std::vector<int> radii;
@@ -920,7 +920,7 @@ namespace lab6 {
 			int y = center.second;
 			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, x, y, 10, 30, 2, 0.5);
+			auto radii = lab6::findRadii(detection.magnitudes, x, y, 10, 30, 2, 0.9);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
