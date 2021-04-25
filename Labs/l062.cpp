@@ -685,8 +685,8 @@ namespace lab5 {
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
-		afterHysteresis.save("imageh.ppm");
-		afterNonMaxSuppression.save("imagenms.ppm");
+		// afterHysteresis.save("imageh.ppm");
+		// afterNonMaxSuppression.save("imagenms.ppm");
 
 		return EdgeDetectionResult {
 			combineImages(afterHysteresis, afterNonMaxSuppression),
@@ -704,6 +704,11 @@ namespace lab6 {
 	typedef struct {
 		int x, y, value;
 	} _Maximum2D;
+
+	typedef struct {
+		int radius;
+		double score;
+	} RadiusResult;
 
 	_Maximum2D __findRowMaximum(GrayscaleImage values, uint32_t width, uint32_t __x, uint32_t y) {
 		int maximumValue = -1;
@@ -754,8 +759,24 @@ namespace lab6 {
 				_Maximum2D rowMaximum = __findRowMaximum(values, squareSize, x, nextRowY);
 				int rowCacheIndex = nextRowY % squareSize;
 				rowMaximumCache[rowCacheIndex] = rowMaximum;
-				_Maximum2D squareMaximum = __getMaximumFromCache(rowMaximumCache, squareSize);
-				localMaxima.insert({squareMaximum.x, squareMaximum.y});
+				// Now, we want to avoid the situation where the maximum value of the square keeps
+				// increasing as the square goes down the image.
+				// So, we only check the center row of the square.
+				bool centerRowIsMax = true;
+				int thisRowY = nextRowY - squareSize;
+				int centerRowY = thisRowY + squareSize / 2;
+				_Maximum2D centerRowMaximum = rowMaximumCache[centerRowY % squareSize];
+				for (int testRowY = thisRowY; testRowY <= nextRowY; testRowY++) {
+					int testRowCacheIndex = testRowY % squareSize;
+					if (rowMaximumCache[testRowCacheIndex].value > centerRowMaximum.value) {
+						centerRowIsMax = false;
+					}
+				}
+				if (centerRowIsMax) {
+					localMaxima.insert({centerRowMaximum.x, centerRowMaximum.y});
+				}
+				// _Maximum2D squareMaximum = __getMaximumFromCache(rowMaximumCache, squareSize);
+				// localMaxima.insert({squareMaximum.x, squareMaximum.y});
 			}
 		}
 		return localMaxima;
@@ -875,7 +896,7 @@ namespace lab6 {
 	/**
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minScore specifies the minimum ratio of empty edges to fillled edges.
 	 */
-	std::vector<int> findRadii(
+	std::vector<RadiusResult> findRadii(
 		GrayscaleImage magnitudes,
 		double **angles,
 		int x,
@@ -885,19 +906,19 @@ namespace lab6 {
 		int ringWidth,
 		double minScore) {
 		// Count the edges on each radius
-		double *edgesByRadius = new double[maxRadius - minRadius];
+		double *radiusScores = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			edgesByRadius[radius - minRadius] = scoreCircleCandidate(magnitudes, angles, x, y, radius);
+			radiusScores[radius - minRadius] = scoreCircleCandidate(magnitudes, angles, x, y, radius);
 		}
-		
-		std::vector<int> radii;
+
+		std::vector<RadiusResult> radii;
 
 		// Iterate over each possible radius, using the given ringWidth.
 		for (int radius = minRadius; radius < maxRadius; radius++) {
 			// Keep track of how many edges are found along the circle
-			int ringEdgeCount    = edgesByRadius[radius - minRadius];
+			int ringCumulativeScore    = radiusScores[radius - minRadius];
 			// Keep track of how many edges could possibly be found along the circle
-			int ringMaxEdgeCount = tjcv::countPixelsToDrawCircle(radius);
+			int ringMaximumCumulativeScore = tjcv::countPixelsToDrawCircle(radius);
 
 			// Ring radii must be in the interval requested
 			// int ringStartRadius = radius;
@@ -906,13 +927,13 @@ namespace lab6 {
 			int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
 
 			for (int ringRadius = ringStartRadius; ringRadius <= ringEndRadius; ringRadius++) {
-				ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
-				ringEdgeCount    += edgesByRadius[ringRadius - minRadius];
+				// ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
+				ringCumulativeScore    += radiusScores[ringRadius - minRadius];
 			}
 
-			double ratio = (double) ringEdgeCount / ringMaxEdgeCount;
+			double ratio = (double) ringCumulativeScore / ringMaximumCumulativeScore;
 			if (ratio > minScore) {
-				radii.push_back(radius);
+			radii.push_back({radius, ratio});
 			} else if (ratio > minScore / 2) {
 				// dbg("Found almost circle with ratio " << ratio << '\n');
 			}
@@ -978,11 +999,12 @@ namespace lab6 {
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, 70);
 		votes = votes.convolve(lab5::gaussian5);
+		votes = votes.convolve(lab5::gaussian5);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 20, 15);
+		auto centers = lab6::findCenters(votes, 100, 10);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -996,12 +1018,12 @@ namespace lab6 {
 		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
-			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
+			tjcv::drawFilledCircle(imageWithCenters, x, y, 2, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 1, 0.2);
-			for (int radius : radii) {
-				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
-				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 1, 0.7);
+			for (const auto& radiusResult : radii) {
+				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radiusResult.radius << ", score=" << radiusResult.score << "}\n");
+				tjcv::drawCircle(colorImage, x, y, radiusResult.radius, CIRCLE_COLOR);
 			}
 
 			foundRadiusCount += radii.size();
