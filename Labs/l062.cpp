@@ -570,8 +570,8 @@ namespace lab5 {
 		int width = xGradient.getWidth();
 		int height = xGradient.getHeight();
 		GrayscaleImage im(width, height, 1);
-		for (int y = 0; y < xGradient.getWidth(); y++) {
-			for (int x = 0; x < xGradient.getHeight(); x++) {
+		for (int y = 0; y < xGradient.getHeight(); y++) {
+			for (int x = 0; x < xGradient.getWidth(); x++) {
 				im.set(x, y, 0);
 				double currentMagnitude = magnitudes.get(x, y);
 
@@ -685,6 +685,8 @@ namespace lab5 {
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
+		afterHysteresis.save("imageh.ppm");
+		afterNonMaxSuppression.save("imagenms.ppm");
 
 		return EdgeDetectionResult {
 			combineImages(afterHysteresis, afterNonMaxSuppression),
@@ -898,13 +900,13 @@ namespace lab6 {
 			int ringMaxEdgeCount = tjcv::countPixelsToDrawCircle(radius);
 
 			// Ring radii must be in the interval requested
-			int ringStartRadius = radius;
-			int ringEndRadius   = min(radius + 1, maxRadius - 1);
-			// int ringStartRadius  = max(minRadius, radius - ringWidth);
-			// int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
+			// int ringStartRadius = radius;
+			// int ringEndRadius   = min(radius + 1, maxRadius - 1);
+			int ringStartRadius  = max(minRadius, radius - ringWidth);
+			int ringEndRadius    = min(radius + ringWidth, maxRadius - 1);
 
 			for (int ringRadius = ringStartRadius; ringRadius <= ringEndRadius; ringRadius++) {
-				// ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
+				ringMaxEdgeCount += tjcv::countPixelsToDrawCircle(ringRadius);
 				ringEdgeCount    += edgesByRadius[ringRadius - minRadius];
 			}
 
@@ -969,7 +971,7 @@ namespace lab6 {
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscaleImage, 80, 180);
+		auto detection = lab5::detectEdges(grayscaleImage, 80, 140);
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
@@ -980,7 +982,7 @@ namespace lab6 {
 		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 100, 15);
+		auto centers = lab6::findCenters(votes, 20, 15);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -996,7 +998,7 @@ namespace lab6 {
 			int y = center.second;
 			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 10, 30, 2, 0.5);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 1, 0.2);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
