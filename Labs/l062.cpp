@@ -58,6 +58,7 @@ namespace tjcv {
 			int** pixels;
 			int width, height;
 			int max = 255;
+			int absoluteMax = 0;
 
 		public:
 			GrayscaleImage(int **pixels, int width, int height, int max = 255);
@@ -66,13 +67,15 @@ namespace tjcv {
 			void save(std::string filename);
 			
 			void set(int x, int y, int value);
-			int get(int x, int y);
+			int get(int x, int y) const;
 
 			int getMax();
-			int getWidth();
-			int getHeight();
+			int getWidth() const;
+			int getHeight() const;
 			std::pair<int, int> getSize();
 			void setMax(int max);
+			bool has(int x, int y) const;
+			int getAbsoluteMax() const;
 
 			ColorImage toColor();
 
@@ -205,18 +208,30 @@ namespace tjcv {
 		this->pixels[y][x] = value;
 	}
 
-	int GrayscaleImage::get(int x, int y) {
+	int GrayscaleImage::get(int x, int y) const {
 		if (x < 0 || y < 0) return -1;
 		if (x >= width || y >= height) return -1;
 		return this->pixels[y][x];
 	}
 
 	int GrayscaleImage::getMax() { return this->max; }
-	int GrayscaleImage::getWidth() { return this->width; }
-	int GrayscaleImage::getHeight() { return this->height; }
+	int GrayscaleImage::getWidth() const { return this->width; }
+	int GrayscaleImage::getHeight() const { return this->height; }
 	std::pair<int, int> GrayscaleImage::getSize() { return { this->width, this->height }; }
 
 	void GrayscaleImage::setMax(int max) { this->max = max; }
+	bool GrayscaleImage::has(int x, int y) const { return (x >= 0) && (y >= 0) && (x < this->width) && (y < this->height); }
+	int GrayscaleImage::getAbsoluteMax() const {
+		int max = 0, _val;
+		for (int x = 0; x < getWidth(); x++) {
+			for (int y = 0; y < getHeight(); y++) {
+				if ((_val = get(x, y)) > max) {
+					max = _val;
+				}
+			}
+		}
+		return max;
+	}
 
 	ColorImage GrayscaleImage::toColor() {
 		ColorImage color(width, height);
@@ -684,50 +699,105 @@ namespace lab5 {
 namespace lab6 {
 	using tjcv::GrayscaleImage;
 
+	typedef struct {
+		int x, y, value;
+	} _Maximum2D;
+
+	_Maximum2D __findRowMaximum(GrayscaleImage values, uint32_t width, uint32_t __x, uint32_t y) {
+		int maximumValue = -1;
+		int maximumValueX = -1;
+		int maximumValueY = -1;
+		for (int x = __x; x < __x + width && x < values.getWidth(); x++) {
+			int value = values.get(x, y);
+			if (value > maximumValue) {
+				maximumValue = value;
+				maximumValueX = x;
+				maximumValueY = y;
+			}
+		}
+		return _Maximum2D {maximumValueX, maximumValueY, maximumValue};
+	}
+
+	_Maximum2D __getMaximumFromCache(_Maximum2D *cache, int cacheSize) {
+		_Maximum2D maximum {-1, -1, -1};
+		for (int i = 0; i < cacheSize; i++) {
+			auto current = cache[i];
+			if (current.value > maximum.value) {
+				maximum.value = current.value;
+				maximum.x = current.x;
+				maximum.y = current.y;
+			}
+		}
+		return maximum;
+	}
+
+	std::set<std::pair<int, int>> findLocalMaximaWithSlidingSquare(GrayscaleImage values, uint32_t squareSize) {
+		std::set<std::pair<int, int>> localMaxima;
+	
+
+		/*
+		This caches the maximum value of each row of the current square.
+		When the square moves down, the next value replaces the value one squareWidth
+		before it in the cache. So, rowMaximumCache[y % squareSize] will be consistent.
+		*/
+		_Maximum2D *rowMaximumCache = new _Maximum2D[squareSize];
+
+		for (int x = 0; x + squareSize < values.getWidth(); x++) {
+			// Generate row maximum cache
+			for (int y = 0; y < squareSize && y < values.getWidth(); y++) {
+				rowMaximumCache[y] = __findRowMaximum(values, squareSize, x, y);
+			}
+
+			for (int nextRowY = squareSize; nextRowY < values.getHeight(); nextRowY++) {
+				_Maximum2D rowMaximum = __findRowMaximum(values, squareSize, x, nextRowY);
+				int rowCacheIndex = nextRowY % squareSize;
+				rowMaximumCache[rowCacheIndex] = rowMaximum;
+				_Maximum2D squareMaximum = __getMaximumFromCache(rowMaximumCache, squareSize);
+				localMaxima.insert({squareMaximum.x, squareMaximum.y});
+			}
+		}
+		return localMaxima;
+	}
+
 	/**
 	 * Using Bresenham's algorithm, casts votes along a line. The rayWidth option allows you to cast lines that are wider than one pixel.
 	 */
 	void castVotesForOnePixel(
-		int **votes,
+		GrayscaleImage votes,
 		int x,
 		int y,
-		int width,
-		int height,
 		double angle,
-		int rayWidth = 0) {
+		int maxRadius) {
 		using tjcv::inbounds;
 
-		for (int offset = -rayWidth; offset <= rayWidth; offset++) {
-			// Offset perpendicular to the line
-			// cos -> sin
-			// sin -> -cos
-			int offsetX = (int) (sin(angle) * offset);
-			int offsetY = (int) (-cos(angle) * offset);
+		tjcv::BresenhamPixelIterator it(x, y, angle);
 
-			tjcv::BresenhamPixelIterator it(x, y, angle);
-			int cx, cy;
-			while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
-				votes[cy][cx]++;
-				it.step(1);
-			}
+		int i, cx, cy;
 
-			it.reset();
-
-			while (cx = it.getX(), cy = it.getY(), inbounds(cx, cy, width, height)) {
-				votes[cy][cx]++;
-				it.step(-1);
-			}
+		i = 0;
+		while (cx = it.getX(), cy = it.getY(), votes.has(cx, cy) && (i < maxRadius || maxRadius == -1)) {
+			votes.set(cx, cy, votes.get(cx, cy) + 1);
+			it.step(1);
+			i++;
 		}
 
+		it.reset();
+
+		i = 0;
+		while (cx = it.getX(), cy = it.getY(), votes.has(cx, cy) && (i < maxRadius || maxRadius == -1)) {
+			votes.set(cx, cy, votes.get(cx, cy) + 1);
+			it.step(-1);
+			i++;
+		}
 	}
 
-	int **castVotes(GrayscaleImage edges, double **angles, int rayWidth = 0) {
-		int **votes = tjcv::make2DIntArray(edges.getHeight(), edges.getWidth());
+	GrayscaleImage castVotes(GrayscaleImage edges, double **angles, int maxRadius) {
+		GrayscaleImage votes(edges.getWidth(), edges.getHeight());
 
 		for (int y = 0; y < edges.getHeight(); y++) {
 			for (int x = 0; x < edges.getWidth(); x++) {
 				if (edges.get(x, y)) {
-					castVotesForOnePixel(votes, x, y, edges.getWidth(), edges.getHeight(), angles[y][x], rayWidth);
+					castVotesForOnePixel(votes, x, y, angles[y][x], maxRadius);
 				}
 			}
 		}
@@ -740,15 +810,17 @@ namespace lab6 {
 	 * and a width and height, to specify the area within the int** to search. The optional threshold parameter
 	 * can be used to specify the minimum number of votes required for a point to be classified as a center.
 	 */
-	std::vector<std::pair<int, int>> findCenters(int **votes, int width, int height, int threshold = 10) {
-		std::vector<std::pair<int, int>> centers;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				if (votes[y][x] >= threshold) {
-					centers.push_back({x, y});
-				}
+	std::set<std::pair<int, int>> findCenters(GrayscaleImage votes, int localMaximumSlidingSquareSize, int threshold) {
+		std::set<std::pair<int, int>> localMaxima = findLocalMaximaWithSlidingSquare(votes, localMaximumSlidingSquareSize);
+		std::set<std::pair<int, int>> centers;
+		for (const auto& localMaximum : localMaxima) {
+			int x = localMaximum.first;
+			int y = localMaximum.second;
+			if (threshold != -1 && votes.get(x, y) > threshold) {
+				centers.insert({x, y});
 			}
 		}
+
 		return centers;
 	}
 
@@ -770,26 +842,36 @@ namespace lab6 {
 		for (const auto& pixel : pixels) {
 			int pixelX = pixel.first;
 			int pixelY = pixel.second;
+			
+			// Calculate the dot product between the line along the edge gradient
+			// and the ray coming from the center of the circle.
 
+			// Angle
 			double intendedAngle = atan2((double) (pixelY - y), (double) (pixelX - x));
 			double actualAngle = angles[y][x];
-
-			// Using geometry, the minimum distance from a ray cast along the gradient of the edge pixel
-			// would be equal to sin(theta), where theta is the angle between the ray from the center to
-			// the edge and the ray along the edge's gradient.
-
 			double theta = actualAngle - intendedAngle;
-			double rayMinimumDistanceFromCenter = abs(sin(theta));
 
-			score += rayMinimumDistanceFromCenter * magnitudes.get(pixel.first, pixel.second) / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
+			// Magnitude
+			int magnitude = magnitudes.get(pixelX, pixelY);
+			double magnitudeScaled = (double) magnitude / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
+
+			// The magnitude from the center of the circle is scaled to be 1.
+			double dotProduct = magnitudeScaled * cos(theta);
+
+			// For some reason, the absolute value function outputs '0'
+			score += dotProduct < 0 ? -dotProduct : dotProduct;
+
+			// dbg("magnitude:" << magnitude << ", magnitudeScaled:" << magnitudeScaled << ", cos(theta):" << cos(theta) << ", dot: " << dotProduct << '\n');
 
 		}
+
+		// dbg("score: " << score << '\n');
 
 		return score;
 	}
 
 	/**
-	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minRatio specifies the minimum ratio of empty edges to fillled edges.
+	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minScore specifies the minimum ratio of empty edges to fillled edges.
 	 */
 	std::vector<int> findRadii(
 		GrayscaleImage magnitudes,
@@ -799,7 +881,7 @@ namespace lab6 {
 		int minRadius,
 		int maxRadius,
 		int ringWidth,
-		double minRatio) {
+		double minScore) {
 		// Count the edges on each radius
 		double *edgesByRadius = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
@@ -827,26 +909,13 @@ namespace lab6 {
 			}
 
 			double ratio = (double) ringEdgeCount / ringMaxEdgeCount;
-			if (ratio > minRatio) {
+			if (ratio > minScore) {
 				radii.push_back(radius);
-			} else if (ratio > minRatio / 2) {
-				dbg("Found almost circle with ratio " << ratio << '\n');
+			} else if (ratio > minScore / 2) {
+				// dbg("Found almost circle with ratio " << ratio << '\n');
 			}
 		}
 		return radii;
-	}
-
-	GrayscaleImage createVotesGraph(int **votes, int width, int height) {
-		int maxIntensity = 1;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				if (votes[y][x] > maxIntensity) {
-					maxIntensity = votes[y][x];
-				}
-			}
-		}
-
-		return GrayscaleImage { votes, width, height, maxIntensity };
 	}
 
 	void part1() {
@@ -860,12 +929,13 @@ namespace lab6 {
 		detection.edges.save("imagef.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
-		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.getWidth(), detection.edges.getHeight());
-		votesGraph.save("imagev.ppm");
+		auto votes = lab6::castVotes(detection.edges, detection.angles, 70);
+		votes = votes.convolve(lab5::gaussian5);
+		votes.setMax(votes.getAbsoluteMax());
+		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscale.getWidth(), grayscale.getHeight(), 200);
+		auto centers = lab6::findCenters(votes, 5, 15);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -904,27 +974,29 @@ namespace lab6 {
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 2);
-		auto votesGraph = lab6::createVotesGraph(votes, detection.edges.getWidth(), detection.edges.getHeight());
-		votesGraph.save("imagev.ppm");
+		auto votes = lab6::castVotes(detection.edges, detection.angles, 70);
+		votes = votes.convolve(lab5::gaussian5);
+		votes.setMax(votes.getAbsoluteMax());
+		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, grayscaleImage.getWidth(), grayscaleImage.getHeight(), 200);
+		auto centers = lab6::findCenters(votes, 100, 15);
 
 		dbg("Found " << centers.size() << " centers\n");
 
 		int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 		int* CENTER_COLOR = new int[3] { 255, 0, 0 };
 
+		auto imageWithCenters = colorImage.clone();
+
 		dbg("Finding radii\n");
 		int foundRadiusCount = 0;
-		for (int i = 0; i < centers.size(); i++) {
-			const auto& center = centers.at(i);
+		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
-			// tjcv::drawFilledCircle(colorImage, x, y, 5, CENTER_COLOR);
+			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 10, 30, 2, 0.9);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 10, 30, 2, 0.5);
 			for (int radius : radii) {
 				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radius << "}\n");
 				tjcv::drawCircle(colorImage, x, y, radius, CIRCLE_COLOR);
@@ -932,6 +1004,8 @@ namespace lab6 {
 
 			foundRadiusCount += radii.size();
 		}
+
+		imageWithCenters.save("imageCC.ppm");
 
 		dbg("Found " << foundRadiusCount << " radii\n");
 		dbg("Saving\n");
