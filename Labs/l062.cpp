@@ -1004,7 +1004,7 @@ namespace lab6 {
 		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 100, 10);
+		auto centers = lab6::findCenters(votes, 75, 10);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -1020,10 +1020,18 @@ namespace lab6 {
 			int y = center.second;
 			tjcv::drawFilledCircle(imageWithCenters, x, y, 2, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 1, 0.7);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 4, 0.7);
+			int bestRadius = -1;
+			double bestRadiusScore = -1;
 			for (const auto& radiusResult : radii) {
-				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << radiusResult.radius << ", score=" << radiusResult.score << "}\n");
-				tjcv::drawCircle(colorImage, x, y, radiusResult.radius, CIRCLE_COLOR);
+				if (radiusResult.score > bestRadiusScore) {
+					bestRadiusScore = radiusResult.score;
+					bestRadius = radiusResult.radius;
+				}
+			}
+			if (bestRadiusScore > 0) {
+				tjcv::drawCircle(colorImage, x, y, bestRadius, CIRCLE_COLOR);
+				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << bestRadius << ", score=" << bestRadiusScore << "}\n");
 			}
 
 			foundRadiusCount += radii.size();
