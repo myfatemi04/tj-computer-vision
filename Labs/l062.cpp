@@ -335,7 +335,7 @@ namespace tjcv {
 			void step(int count) {
 				if (iterateOverX) {
 					currentX += count;
-					buildup += count * sin(angle) / cos(angle);
+					buildup += count * cos(angle) / sin(angle);
 					int overshoot = (int) buildup;
 					if (overshoot != 0) {
 						buildup -= overshoot;
@@ -963,6 +963,8 @@ namespace lab6 {
 		return radii;
 	}
 
+	
+
 	/**
 	 * When there are several circles in roughly the same area, we use deduplication.
 	 * The way this works is by dividing the image into a grid. Then, we iterate through
@@ -974,6 +976,48 @@ namespace lab6 {
 		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSquareWidth);
 		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSquareHeight);
 
+		const CircleResult* **occupiedGridSquares = new const CircleResult* *[verticalGridSquareCount];
+		for (int y = 0; y < verticalGridSquareCount; y++) {
+			occupiedGridSquares[y] = new const CircleResult* [horizontalGridSquareCount];
+			for (int x = 0; x < horizontalGridSquareCount; x++) {
+				occupiedGridSquares[y][x] = nullptr;
+			}
+		}
+
+		for (auto& circle : circles) {
+			int x = circle.x;
+			int y = circle.y;
+			int gridSquareX = x / gridSquareWidth;
+			int gridSquareY = y / gridSquareHeight;
+
+			int scoreInGridSquare = -1;
+			const CircleResult *gridSquareResult = occupiedGridSquares[gridSquareY][gridSquareX];
+			if (gridSquareResult != nullptr) {
+				scoreInGridSquare = gridSquareResult->radius.score;
+			}
+
+			if (circle.radius.score > scoreInGridSquare) {
+				occupiedGridSquares[gridSquareY][gridSquareX] = &circle;
+			}
+		}
+
+		for (int gridSquareY = 0; gridSquareY < verticalGridSquareCount; gridSquareY++) {
+			for (int gridSquareX = 0; gridSquareX < horizontalGridSquareCount; gridSquareX++) {
+				const CircleResult *gridSquareResult = occupiedGridSquares[gridSquareY][gridSquareX];
+				if (gridSquareResult != nullptr) {
+					deduplicated.insert(*gridSquareResult);
+				}
+			}
+		}
+
+		return deduplicated;
+	}
+
+	std::set<std::pair<int, int>> dedupeCenters(const std::set<std::pair<int, int>>& centers, int gridSquareWidth, int gridSquareHeight, int imageWidth, int imageHeight) {
+		std::set<std::pair<int, int>> deduplicated;
+		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSquareWidth);
+		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSquareHeight);
+
 		bool **occupiedGridSquares = new bool*[verticalGridSquareCount];
 		for (int y = 0; y < verticalGridSquareCount; y++) {
 			occupiedGridSquares[y] = new bool[horizontalGridSquareCount];
@@ -982,19 +1026,36 @@ namespace lab6 {
 			}
 		}
 
-		for (const auto& circle : circles) {
-			int x = circle.x;
-			int y = circle.y;
+		for (const auto& center : centers) {
+			int x = center.first;
+			int y = center.second;
 			int gridSquareX = x / gridSquareWidth;
 			int gridSquareY = y / gridSquareHeight;
 
 			if (!occupiedGridSquares[gridSquareY][gridSquareX]) {
 				occupiedGridSquares[gridSquareY][gridSquareX] = true;
-				deduplicated.insert(circle);
+				deduplicated.insert(center);
 			}
 		}
 
 		return deduplicated;
+	}
+
+	typedef struct {
+		int pennies, nickels, dimes, quarters;
+	} MoneyCountingResult;
+
+	MoneyCountingResult countMoney(std::set<CircleResult> circles) {
+		int minimumRadius = 100000;
+		int maximumRadius = 0;
+		for (const auto& circle : circles) {
+			if (circle.radius.radius < minimumRadius) {
+				minimumRadius = circle.radius.radius;
+			}
+			if (circle.radius.radius > maximumRadius) {
+				maximumRadius = circle.radius.radius;
+			}
+		}
 	}
 
 	void part1() {
@@ -1008,13 +1069,13 @@ namespace lab6 {
 		detection.edges.save("imagef.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 70);
+		auto votes = lab6::castVotes(detection.edges, detection.angles, -1);
 		votes = votes.convolve(lab5::gaussian5);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 5, 15);
+		auto centers = lab6::findCenters(votes, 5, 6);
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -1053,14 +1114,18 @@ namespace lab6 {
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 70);
+		auto votes = lab6::castVotes(detection.edges, detection.angles, -1);
 		votes = votes.convolve(lab5::gaussian5);
 		votes = votes.convolve(lab5::gaussian5);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
+		const int CENTER_DEDUPE_SQUARE_SIZE = 50;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
+
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 75, 10);
+		auto centers = lab6::findCenters(votes, 75, 5);
+		centers = dedupeCenters(centers, CENTER_DEDUPE_SQUARE_SIZE, CENTER_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 
 		dbg("Found " << centers.size() << " centers\n");
 
@@ -1071,14 +1136,18 @@ namespace lab6 {
 
 		std::set<CircleResult> tentativeCircles, deduplicatedCircles;
 
+		const int MIN_RADIUS = 40;
+		const int MAX_RADIUS = 100;
+		const int SCORE_THRESHOLD = 0.55;
+
 		dbg("Finding radii\n");
 		int foundRadiusCount = 0;
 		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
-			tjcv::drawFilledCircle(imageWithCenters, x, y, 2, CENTER_COLOR);
+			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 20, 40, 2, 0.6);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, MIN_RADIUS, MAX_RADIUS, 2, SCORE_THRESHOLD);
 			int bestRadius = -1;
 			double bestRadiusScore = -1;
 			for (const auto& radiusResult : radii) {
@@ -1094,7 +1163,7 @@ namespace lab6 {
 
 		dbg("Deduplicating\n");
 
-		deduplicatedCircles = dedupe(tentativeCircles, 30, 30, colorImage.getWidth(), colorImage.getHeight());
+		deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 		for (const auto& circle : deduplicatedCircles) {
 			tjcv::drawCircle(colorImage, circle.x, circle.y, circle.radius.radius, CIRCLE_COLOR);
 			dbg("Circle: {x=" << circle.x << ", y=" << circle.y << ", r=" << circle.radius.radius << ", score=" << circle.radius.score << "}\n");
@@ -1102,7 +1171,8 @@ namespace lab6 {
 
 		imageWithCenters.save("imageCC.ppm");
 
-		dbg("Found " << foundRadiusCount << " radii\n");
+		dbg("Found " << tentativeCircles.size() << " radii before deduplication\n");
+		dbg("Found " << deduplicatedCircles.size() << " radii after deduplication\n");
 		dbg("Saving\n");
 
 		colorImage.save("coins.ppm");
