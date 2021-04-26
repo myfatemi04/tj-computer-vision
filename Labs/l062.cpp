@@ -1020,7 +1020,7 @@ namespace lab6 {
 			int y = center.second;
 			tjcv::drawFilledCircle(imageWithCenters, x, y, 2, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 8, 40, 4, 0.7);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, 20, 40, 2, 0.6);
 			int bestRadius = -1;
 			double bestRadiusScore = -1;
 			for (const auto& radiusResult : radii) {
@@ -1031,10 +1031,11 @@ namespace lab6 {
 			}
 			if (bestRadiusScore > 0) {
 				tjcv::drawCircle(colorImage, x, y, bestRadius, CIRCLE_COLOR);
-				dbg("Circle: {x=" << x << ", y=" << y << ", r=" << bestRadius << ", score=" << bestRadiusScore << "}\n");
+				// dbg("Circle: {x=" << x << ", y=" << y << ", r=" << bestRadius << ", score=" << bestRadiusScore << "}\n");
+				foundRadiusCount++;
 			}
 
-			foundRadiusCount += radii.size();
+			// foundRadiusCount += radii.size();
 		}
 
 		imageWithCenters.save("imageCC.ppm");
