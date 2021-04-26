@@ -14,6 +14,10 @@
 # define dbg(x)
 #endif
 
+int _divideRoundUp(int numerator, int denominator) {
+	return (numerator + denominator - 1) / denominator;
+}
+
 int max(int a, int b) {
 	return (a > b) ? a : b;
 }
@@ -710,6 +714,22 @@ namespace lab6 {
 		double score;
 	} RadiusResult;
 
+	typedef struct {
+		int x, y;
+		RadiusResult radius;
+	} CircleResult;
+
+	/** Required functions to make sets of these types possible **/
+
+	bool operator<(const RadiusResult& a, const RadiusResult& b) {
+		return (a.radius < b.radius) || (a.score < b.score);
+	}
+
+	bool operator<(const CircleResult& a, const CircleResult& b) {
+		return (a.x < b.x) || (a.y < b.y) || (a.radius < b.radius);
+	}
+
+
 	_Maximum2D __findRowMaximum(GrayscaleImage values, uint32_t width, uint32_t __x, uint32_t y) {
 		int maximumValue = -1;
 		int maximumValueX = -1;
@@ -893,6 +913,8 @@ namespace lab6 {
 		return score;
 	}
 
+	
+
 	/**
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minScore specifies the minimum ratio of empty edges to fillled edges.
 	 */
@@ -939,6 +961,40 @@ namespace lab6 {
 			}
 		}
 		return radii;
+	}
+
+	/**
+	 * When there are several circles in roughly the same area, we use deduplication.
+	 * The way this works is by dividing the image into a grid. Then, we iterate through
+	 * the circles, keeping track of which grid squares already have a circle. If a grid
+	 * square already has a circle, we won't add it to the deduplicated result.
+	 */
+	std::set<CircleResult> dedupe(const std::set<CircleResult>& circles, int gridSquareWidth, int gridSquareHeight, int imageWidth, int imageHeight) {
+		std::set<CircleResult> deduplicated;
+		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSquareWidth);
+		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSquareHeight);
+
+		bool **occupiedGridSquares = new bool*[verticalGridSquareCount];
+		for (int y = 0; y < verticalGridSquareCount; y++) {
+			occupiedGridSquares[y] = new bool[horizontalGridSquareCount];
+			for (int x = 0; x < horizontalGridSquareCount; x++) {
+				occupiedGridSquares[y][x] = false;
+			}
+		}
+
+		for (const auto& circle : circles) {
+			int x = circle.x;
+			int y = circle.y;
+			int gridSquareX = x / gridSquareWidth;
+			int gridSquareY = y / gridSquareHeight;
+
+			if (!occupiedGridSquares[gridSquareY][gridSquareX]) {
+				occupiedGridSquares[gridSquareY][gridSquareX] = true;
+				deduplicated.insert(circle);
+			}
+		}
+
+		return deduplicated;
 	}
 
 	void part1() {
@@ -1013,6 +1069,8 @@ namespace lab6 {
 
 		auto imageWithCenters = colorImage.clone();
 
+		std::set<CircleResult> tentativeCircles, deduplicatedCircles;
+
 		dbg("Finding radii\n");
 		int foundRadiusCount = 0;
 		for (const auto& center : centers) {
@@ -1030,12 +1088,16 @@ namespace lab6 {
 				}
 			}
 			if (bestRadiusScore > 0) {
-				tjcv::drawCircle(colorImage, x, y, bestRadius, CIRCLE_COLOR);
-				// dbg("Circle: {x=" << x << ", y=" << y << ", r=" << bestRadius << ", score=" << bestRadiusScore << "}\n");
-				foundRadiusCount++;
+				tentativeCircles.insert({x, y, RadiusResult {bestRadius, bestRadiusScore}});
 			}
+		}
 
-			// foundRadiusCount += radii.size();
+		dbg("Deduplicating\n");
+
+		deduplicatedCircles = dedupe(tentativeCircles, 30, 30, colorImage.getWidth(), colorImage.getHeight());
+		for (const auto& circle : deduplicatedCircles) {
+			tjcv::drawCircle(colorImage, circle.x, circle.y, circle.radius.radius, CIRCLE_COLOR);
+			dbg("Circle: {x=" << circle.x << ", y=" << circle.y << ", r=" << circle.radius.radius << ", score=" << circle.radius.score << "}\n");
 		}
 
 		imageWithCenters.save("imageCC.ppm");
