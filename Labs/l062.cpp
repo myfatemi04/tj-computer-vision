@@ -88,6 +88,8 @@ namespace tjcv {
 			ColorImage toColor();
 
 			GrayscaleImage convolve(GrayscaleImage filter, int mode);
+
+			GrayscaleImage applyGaussianFilter(int kernelSize, double standardDeviation);
 	};
 
 	ColorImage::ColorImage(int width, int height, int max): width(width), height(height), max(max) {
@@ -257,6 +259,12 @@ namespace tjcv {
 	const int CONVOLVE_FILL_BLACK = 0;
 	const int CONVOLVE_FILL_WHITE = 1;
 	const int CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE = 2;
+	const double PI = 3.141592653589;
+	const double E = 2.718281828;
+
+	double _square(double a) {
+		return a * a;
+	}
 
 	GrayscaleImage GrayscaleImage::convolve(GrayscaleImage filter, int fillMode = 0) {
 		// dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
@@ -314,6 +322,42 @@ namespace tjcv {
 		
 		return convolved;
 	}
+	
+	GrayscaleImage GrayscaleImage::applyGaussianFilter(int kernelSize, double standardDeviation) {
+		double **kernel = new double*[kernelSize];
+		double prefix = 1 / (2 * PI * _square(standardDeviation));
+		int k = (kernelSize - 1) / 2;
+		for (int i = 0; i < kernelSize; i++) {
+			kernel[i] = new double[kernelSize];
+			for (int j = 0; j < kernelSize; j++) {
+				double exponent = -(_square(i - (k + 1)) + _square(j - (k + 1))) / (2 * _square(standardDeviation));
+				kernel[i][j] = prefix * pow(E, exponent);
+			}
+		}
+
+		GrayscaleImage newImage (width, height, this->max);
+
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				if (y < k || x < k) {
+					newImage.set(x, y, get(x, y));
+				} else if ((y + k >= height) || (x + k >= height)) {
+					newImage.set(x, y, get(x, y));
+				} else {
+					double totalValue = 0;
+					for (int i = -k; i <= k; i++) {
+						for (int j = -k; j < k; j++) {
+							totalValue += newImage.get(x + i, y + j) * kernel[i + k][j + k];
+						}
+					}
+					newImage.set(x, y, totalValue);
+				}
+			}
+		}
+		
+		return newImage;
+	}
+	
 	typedef struct {
 		int x, y;
 		double radius;
@@ -717,8 +761,7 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5_3, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
-		afterGaussian = afterGaussian.convolve(gaussian5_3, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
+		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(10, 3);
 		GrayscaleImage xGradient = afterGaussian.convolve(horizontalSobel);
 		GrayscaleImage yGradient = afterGaussian.convolve(verticalSobel);
 		
@@ -1103,7 +1146,7 @@ namespace lab6 {
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const int EDGE_LOWER_THRESHOLD = 70;
+		const int EDGE_LOWER_THRESHOLD = 20;
 		const int EDGE_UPPER_THRESHOLD = 90;
 		
 		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 25;
@@ -1122,10 +1165,11 @@ namespace lab6 {
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
+		return;
+
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
-		votes = votes.convolve(lab5::gaussian5_3);
-		// votes = votes.convolve(lab5::gaussian5_1);
+		votes = votes.applyGaussianFilter(5, 3);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
