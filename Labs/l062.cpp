@@ -491,7 +491,8 @@ namespace lab5 {
 		},
 		3,
 		3
-	}, horizontalSobel {
+	};
+	GrayscaleImage horizontalSobel {
 		new int*[3] {
 			new int[3] {	1,	2,	1 },
 			new int[3] {	0,	0,	0 },
@@ -499,7 +500,8 @@ namespace lab5 {
 		},
 		3,
 		3
-	}, gaussian3 {
+	};
+	GrayscaleImage gaussian3 {
 		new int*[3] {
 			new int[3] { 1, 2, 1 },
 			new int[3] { 2, 4, 2 },
@@ -507,13 +509,25 @@ namespace lab5 {
 		},
 		3,
 		3
-	}, gaussian5 {
+	};
+	GrayscaleImage gaussian5_1 {
 		new int*[5] {
 			new int[5] { 1,  4,  7,  4, 1 },
 			new int[5] { 4, 16, 26, 16, 4 },
 			new int[5] { 7, 26, 41, 26, 7 },
 			new int[5] { 4, 16, 26, 16, 4 },
 			new int[5] { 1,  4,  7,  4, 1 },
+		},
+		5,
+		5
+	};
+	GrayscaleImage gaussian5_3 {
+		new int*[5] {
+			new int[5] {16, 19, 20, 19, 16},
+			new int[5] {19, 22, 23, 22, 19},
+			new int[5] {20, 23, 25, 23, 20},
+			new int[5] {19, 22, 23, 22, 19},
+			new int[5] {16, 19, 20, 19, 16}
 		},
 		5,
 		5
@@ -703,7 +717,8 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
+		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5_3, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
+		afterGaussian = afterGaussian.convolve(gaussian5_3, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
 		GrayscaleImage xGradient = afterGaussian.convolve(horizontalSobel);
 		GrayscaleImage yGradient = afterGaussian.convolve(verticalSobel);
 		
@@ -916,12 +931,16 @@ namespace lab6 {
 			double actualAngle = angles[y][x];
 			double theta = actualAngle - intendedAngle;
 
+			double angleMatch = _safeAbs(cos(theta));
+
+			if (angleMatch < 0.8) continue;
+
 			// Magnitude
 			int magnitude = magnitudes.get(pixelX, pixelY);
 			double magnitudeScaled = (double) magnitude / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
 
 			// The magnitude from the center of the circle is scaled to be 1.
-			double dotProduct = magnitudeScaled * cos(theta);
+			double dotProduct = magnitudeScaled * angleMatch;
 
 			// For some reason, the absolute value function outputs '0'
 			score += dotProduct < 0 ? -dotProduct : dotProduct;
@@ -929,8 +948,6 @@ namespace lab6 {
 			// dbg("magnitude:" << magnitude << ", magnitudeScaled:" << magnitudeScaled << ", cos(theta):" << cos(theta) << ", dot: " << dotProduct << '\n');
 
 		}
-
-		// dbg("score: " << score << '\n');
 
 		return score;
 	}
@@ -979,7 +996,7 @@ namespace lab6 {
 			if (ratio > minScore) {
 				radii.push_back({radius, ratio});
 			} else if (ratio > minScore / 2) {
-				// dbg("Found almost circle with ratio " << ratio << '\n');
+				dbg("Found almost circle with ratio " << ratio << '\n');
 			}
 		}
 		return radii;
@@ -1079,49 +1096,6 @@ namespace lab6 {
 		}
 	}
 
-	void part1() {
-		using tjcv::ColorImage;
-		dbg("Loading image\n");
-		auto color = ColorImage::fromPPM("image.ppm");
-		auto grayscale = color.toGrayscale();
-
-		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscale, 160, 180);
-		detection.edges.save("imagef.ppm");
-
-		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, -1);
-		votes = votes.convolve(lab5::gaussian5);
-		votes.setMax(votes.getAbsoluteMax());
-		votes.save("imagev.ppm");
-
-		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 5, 6);
-
-		dbg("Found " << centers.size() << " centers\n");
-
-		dbg("Drawing centers\n");
-		auto colorWithCenters = color.clone();
-		int* CENTER_COLOR = new int[3] { 255, 0, 0 };
-		// On all the centers found, create a filled red circle of radius 5.
-		for (const auto& center : centers) {
-			int x = center.first;
-			int y = center.second;
-			// dbg("Center location: " << x << ", " << y << '\n');
-			// Iterate over radii
-			for (int r = 1; r < 5; r++) {
-				for (const auto& pixel : tjcv::getCirclePixels(x, y, r)) {
-					int px = pixel.first;
-					int py = pixel.second;
-					colorWithCenters.set(px, py, CENTER_COLOR);
-				}
-			}
-		}
-
-		dbg("Saving centers\n");
-		colorWithCenters.save("imageCC.ppm");
-	}
-
 	void part2() {
 		using tjcv::ColorImage;
 
@@ -1129,17 +1103,19 @@ namespace lab6 {
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const int EDGE_LOWER_THRESHOLD = 100;
-		const int EDGE_UPPER_THRESHOLD = 150;
+		const int EDGE_LOWER_THRESHOLD = 70;
+		const int EDGE_UPPER_THRESHOLD = 90;
 		
-		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 75;
-		const int CENTER_DEDUPE_SQUARE_SIZE = 50;
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 25;
+		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
 		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
 		const int CENTER_VOTES_THRESHOLD = 15;
 		
 		const int MIN_RADIUS = 60;
 		const int MAX_RADIUS = 200;
-		const double SCORE_THRESHOLD = 0.3;
+		const int VOTE_LENGTH = MAX_RADIUS;
+		const double SCORE_THRESHOLD = 0.4;
+		const int RING_WIDTH = 3;
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD);
@@ -1147,12 +1123,11 @@ namespace lab6 {
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, 300);
-		votes = votes.convolve(lab5::gaussian5);
-		votes = votes.convolve(lab5::gaussian5);
+		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
+		votes = votes.convolve(lab5::gaussian5_3);
+		// votes = votes.convolve(lab5::gaussian5_1);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
-
 
 		dbg("Finding centers\n");
 		auto centers = lab6::findCenters(votes, CENTER_LOCAL_MAXIMUM_SQUARE_SIZE, CENTER_VOTES_THRESHOLD);
@@ -1160,12 +1135,13 @@ namespace lab6 {
 
 		dbg("Found " << centers.size() << " centers\n");
 
-		int* CIRCLE_COLOR = new int[3] { 0, 255, 0 };
 		int* CENTER_COLOR = new int[3] { 255, 0, 0 };
 
 		auto imageWithCenters = colorImage.clone();
 
 		std::set<CircleResult> tentativeCircles, deduplicatedCircles;
+
+		double highestRadiusScore = 0;
 
 		dbg("Finding radii\n");
 		for (const auto& center : centers) {
@@ -1173,7 +1149,7 @@ namespace lab6 {
 			int y = center.second;
 			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, MIN_RADIUS, MAX_RADIUS, 2, SCORE_THRESHOLD);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, MIN_RADIUS, MAX_RADIUS, RING_WIDTH, SCORE_THRESHOLD);
 			int bestRadius = -1;
 			double bestRadiusScore = -1;
 			for (const auto& radiusResult : radii) {
@@ -1184,6 +1160,9 @@ namespace lab6 {
 			}
 			if (bestRadiusScore > 0) {
 				tentativeCircles.insert({x, y, RadiusResult {bestRadius, bestRadiusScore}});
+				if (bestRadiusScore > highestRadiusScore) {
+					highestRadiusScore = bestRadiusScore;
+				}
 			}
 		}
 
@@ -1191,6 +1170,9 @@ namespace lab6 {
 
 		deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 		for (const auto& circle : deduplicatedCircles) {
+			int val = min(255, (int) (255 * ((circle.radius.score - SCORE_THRESHOLD) / (highestRadiusScore - SCORE_THRESHOLD))));
+			int *CIRCLE_COLOR = new int[3] { 255 - val, val, 0 };
+			dbg("circle color: " << val << '\n');
 			tjcv::drawCircle(colorImage, circle.x, circle.y, circle.radius.radius, CIRCLE_COLOR);
 			dbg("Circle: {x=" << circle.x << ", y=" << circle.y << ", r=" << circle.radius.radius << ", score=" << circle.radius.score << "}\n");
 		}
