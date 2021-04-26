@@ -87,7 +87,7 @@ namespace tjcv {
 
 			ColorImage toColor();
 
-			GrayscaleImage convolve(GrayscaleImage filter);
+			GrayscaleImage convolve(GrayscaleImage filter, int mode);
 	};
 
 	ColorImage::ColorImage(int width, int height, int max): width(width), height(height), max(max) {
@@ -254,7 +254,11 @@ namespace tjcv {
 		return color;
 	}
 
-	GrayscaleImage GrayscaleImage::convolve(GrayscaleImage filter) {
+	const int CONVOLVE_FILL_BLACK = 0;
+	const int CONVOLVE_FILL_WHITE = 1;
+	const int CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE = 2;
+
+	GrayscaleImage GrayscaleImage::convolve(GrayscaleImage filter, int fillMode = 0) {
 		// dbg("Convolving an image around a filter " << filter.getWidth() << "x" << filter.getHeight() << '\n');
 
 		GrayscaleImage convolved(width, height, max);
@@ -273,15 +277,25 @@ namespace tjcv {
 		// Initialize the edges to 0
 		for (int y = 0; y < height; y++) {
 			for (int i = 0; i < filterRadiusX; i++) {
-				convolved.set(i, y, 0);
-				convolved.set(width - i - 1, y, 0);
+				if (fillMode == 2) {
+					convolved.set(i, y, get(i, y));
+					convolved.set(width - i - 1, y, get(width - i - 1, y));
+				} else {
+					convolved.set(i, y, fillMode * getMax());
+					convolved.set(width - i - 1, y, fillMode * getMax());
+				}
 			}
 		}
 
 		for (int x = 0; x < width; x++) {
 			for (int i = 0; i < filterRadiusY; i++) {
-				convolved.set(x, i, 0);
-				convolved.set(x, height - i - 1, 0);
+				if (fillMode == 2) {
+					convolved.set(x, i, get(x, i));
+					convolved.set(x, height - i - 1, get(x, height - i - 1));
+				} else {
+					convolved.set(x, i, fillMode * getMax());
+					convolved.set(x, height - i - 1, fillMode * getMax());
+				}
 			}
 		}
 
@@ -689,7 +703,7 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5);
+		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5, tjcv::CONVOLVE_FILL_ORIGINAL_PIXEL_VALUE);
 		GrayscaleImage xGradient = afterGaussian.convolve(horizontalSobel);
 		GrayscaleImage yGradient = afterGaussian.convolve(verticalSobel);
 		
@@ -738,7 +752,7 @@ namespace lab6 {
 	}
 
 
-	_Maximum2D __findRowMaximum(GrayscaleImage values, uint32_t width, uint32_t __x, uint32_t y) {
+	_Maximum2D __findRowMaximum(GrayscaleImage values, int width, int __x, int y) {
 		int maximumValue = -1;
 		int maximumValueX = -1;
 		int maximumValueY = -1;
@@ -766,7 +780,7 @@ namespace lab6 {
 		return maximum;
 	}
 
-	std::set<std::pair<int, int>> findLocalMaximaWithSlidingSquare(GrayscaleImage values, uint32_t squareSize) {
+	std::set<std::pair<int, int>> findLocalMaximaWithSlidingSquare(GrayscaleImage values, int squareSize) {
 		std::set<std::pair<int, int>> localMaxima;
 	
 
@@ -963,7 +977,7 @@ namespace lab6 {
 
 			double ratio = (double) ringCumulativeScore / ringMaximumCumulativeScore;
 			if (ratio > minScore) {
-			radii.push_back({radius, ratio});
+				radii.push_back({radius, ratio});
 			} else if (ratio > minScore / 2) {
 				// dbg("Found almost circle with ratio " << ratio << '\n');
 			}
@@ -971,7 +985,6 @@ namespace lab6 {
 		return radii;
 	}
 
-	
 
 	/**
 	 * When there are several circles in roughly the same area, we use deduplication.
@@ -1005,7 +1018,7 @@ namespace lab6 {
 			}
 
 			if (circle.radius.score > scoreInGridSquare) {
-				occupiedGridSquares[gridSquareY][gridSquareX] = &circle;
+				occupiedGridSquares[gridSquareY][gridSquareX] = new CircleResult { x, y, circle.radius };
 			}
 		}
 
@@ -1112,29 +1125,24 @@ namespace lab6 {
 	void part2() {
 		using tjcv::ColorImage;
 
-		// dbg(atan2(2, 1) << '\n');
-
-		// auto grayscaleImageTest = new GrayscaleImage(500, 500, 255);
-		// auto bresenhamPixelIterator = new tjcv::BresenhamPixelIterator(250, 250, atan2(2, 1));
-		// for (int i = 0; i < 500; i++) {
-		// 	int x = bresenhamPixelIterator->getX();
-		// 	int y = bresenhamPixelIterator->getY();
-		// 	grayscaleImageTest->set(x, y, 255);
-		// 	bresenhamPixelIterator->step(1);
-		// }
-		// grayscaleImageTest->save("imagev.ppm");
-
 		dbg("Loading image\n");
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const int EDGE_LOWER_THRESHOLD = 80;
-		const int EDGE_UPPER_THRESHOLD = 100;
-
-		const int CENTER_VOTES_THRESHOLD = 50;
+		const int EDGE_LOWER_THRESHOLD = 100;
+		const int EDGE_UPPER_THRESHOLD = 150;
+		
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 75;
+		const int CENTER_DEDUPE_SQUARE_SIZE = 50;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
+		const int CENTER_VOTES_THRESHOLD = 15;
+		
+		const int MIN_RADIUS = 60;
+		const int MAX_RADIUS = 200;
+		const double SCORE_THRESHOLD = 0.3;
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscaleImage, 20, 800);
+		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD);
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
@@ -1144,13 +1152,10 @@ namespace lab6 {
 		votes = votes.convolve(lab5::gaussian5);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
-		return;
 
-		const int CENTER_DEDUPE_SQUARE_SIZE = 50;
-		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 75, CENTER_VOTES_THRESHOLD);
+		auto centers = lab6::findCenters(votes, CENTER_LOCAL_MAXIMUM_SQUARE_SIZE, CENTER_VOTES_THRESHOLD);
 		centers = dedupeCenters(centers, CENTER_DEDUPE_SQUARE_SIZE, CENTER_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 
 		dbg("Found " << centers.size() << " centers\n");
@@ -1162,12 +1167,7 @@ namespace lab6 {
 
 		std::set<CircleResult> tentativeCircles, deduplicatedCircles;
 
-		const int MIN_RADIUS = 40;
-		const int MAX_RADIUS = 100;
-		const int SCORE_THRESHOLD = 0.55;
-
 		dbg("Finding radii\n");
-		int foundRadiusCount = 0;
 		for (const auto& center : centers) {
 			int x = center.first;
 			int y = center.second;
