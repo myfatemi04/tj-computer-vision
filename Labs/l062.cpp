@@ -18,6 +18,10 @@ int _divideRoundUp(int numerator, int denominator) {
 	return (numerator + denominator - 1) / denominator;
 }
 
+double _safeAbs(double a) {
+	return a < 0 ? -a : a;
+}
+
 int max(int a, int b) {
 	return (a > b) ? a : b;
 }
@@ -314,8 +318,12 @@ namespace tjcv {
 				currentX = startX;
 				currentY = startY;
 				buildup = 0;
+
+				// dbg(cos(angle) << ", " << sin(angle) << '\n');
+				// dbg(_safeAbs(cos(angle)) << ", " << _safeAbs(sin(angle)) << '\n');
+
 				
-				iterateOverX = abs(cos(angle)) > abs(sin(angle));
+				iterateOverX = _safeAbs(cos(angle)) > _safeAbs(sin(angle));
 			}
 
 			void reset() {
@@ -681,9 +689,9 @@ namespace lab5 {
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		// GrayscaleImage afterGaussian = convolve(grayscale, gaussian5);
-		GrayscaleImage xGradient = grayscale.convolve(horizontalSobel);
-		GrayscaleImage yGradient = grayscale.convolve(verticalSobel);
+		GrayscaleImage afterGaussian = grayscale.convolve(gaussian5);
+		GrayscaleImage xGradient = afterGaussian.convolve(horizontalSobel);
+		GrayscaleImage yGradient = afterGaussian.convolve(verticalSobel);
 		
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
@@ -1104,27 +1112,45 @@ namespace lab6 {
 	void part2() {
 		using tjcv::ColorImage;
 
+		// dbg(atan2(2, 1) << '\n');
+
+		// auto grayscaleImageTest = new GrayscaleImage(500, 500, 255);
+		// auto bresenhamPixelIterator = new tjcv::BresenhamPixelIterator(250, 250, atan2(2, 1));
+		// for (int i = 0; i < 500; i++) {
+		// 	int x = bresenhamPixelIterator->getX();
+		// 	int y = bresenhamPixelIterator->getY();
+		// 	grayscaleImageTest->set(x, y, 255);
+		// 	bresenhamPixelIterator->step(1);
+		// }
+		// grayscaleImageTest->save("imagev.ppm");
+
 		dbg("Loading image\n");
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
+		const int EDGE_LOWER_THRESHOLD = 80;
+		const int EDGE_UPPER_THRESHOLD = 100;
+
+		const int CENTER_VOTES_THRESHOLD = 50;
+
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscaleImage, 80, 140);
+		auto detection = lab5::detectEdges(grayscaleImage, 20, 800);
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
-		auto votes = lab6::castVotes(detection.edges, detection.angles, -1);
+		auto votes = lab6::castVotes(detection.edges, detection.angles, 300);
 		votes = votes.convolve(lab5::gaussian5);
 		votes = votes.convolve(lab5::gaussian5);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
+		return;
 
 		const int CENTER_DEDUPE_SQUARE_SIZE = 50;
 		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
 
 		dbg("Finding centers\n");
-		auto centers = lab6::findCenters(votes, 75, 5);
+		auto centers = lab6::findCenters(votes, 75, CENTER_VOTES_THRESHOLD);
 		centers = dedupeCenters(centers, CENTER_DEDUPE_SQUARE_SIZE, CENTER_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 
 		dbg("Found " << centers.size() << " centers\n");
