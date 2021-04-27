@@ -790,7 +790,7 @@ namespace lab5 {
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold, int gaussianFilterRadius) {
 
 		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(2 * gaussianFilterRadius + 1, 3, tjcv::FILL_TYPE_ORIGINAL_PIXEL);
-		afterGaussian.save("imageg.ppm");
+		// afterGaussian.save("imageg.ppm");
 		GrayscaleImage xGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_HORIZONTAL);
 		GrayscaleImage yGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_VERTICAL);
 		
@@ -798,8 +798,8 @@ namespace lab5 {
 
 		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold, gaussianFilterRadius);
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
-		afterHysteresis.save("imageh.ppm");
-		afterNonMaxSuppression.save("imagenms.ppm");
+		// afterHysteresis.save("imageh.ppm");
+		// afterNonMaxSuppression.save("imagenms.ppm");
 
 		return EdgeDetectionResult {
 			combineImages(afterHysteresis, afterNonMaxSuppression),
@@ -1300,7 +1300,7 @@ namespace lab6 {
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD, EDGES_GAUSSIAN_KERNEL_RADIUS);
 		detection.edges.save("imagef.ppm");
-		detection.magnitudes.save("imagemagnitudes.ppm");
+		// detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
