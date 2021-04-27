@@ -53,7 +53,7 @@ namespace tjcv {
 			ColorImage(int width, int height, int max = 255);
 
 			void set(int x, int y, int *value);
-			int *get(int x, int y);
+			int *get(int x, int y) const;
 
 			int getWidth() const;
 			int getHeight() const;
@@ -116,7 +116,7 @@ namespace tjcv {
 		this->pixels[y][x] = value;
 	}
 
-	int *ColorImage::get(int x, int y) {
+	int *ColorImage::get(int x, int y) const {
 		if (x < 0 || y < 0) return nullptr;
 		if (x >= width || y >= height) return nullptr;
 		return this->pixels[y][x];
@@ -1185,44 +1185,62 @@ namespace lab6 {
 		int pennies, nickels, dimes, quarters;
 	} MoneyCountingResult;
 
-	MoneyCountingResult countMoney(std::set<CircleResult> circles) {
-		int minimumRadius = 100000;
-		int maximumRadius = 0;
+	double findPennyRadius(const std::set<CircleResult>& circles, const tjcv::ColorImage& reference) {
+		double pennyRadiiCumulativeTotal = 0;
+		int pennyCount = 0;
 		for (const auto& circle : circles) {
-			if (circle.radius.radius < minimumRadius) {
-				minimumRadius = circle.radius.radius;
+			auto projectedPixels = tjcv::getCirclePixels(circle.x, circle.y, circle.radius.radius / 2);
+			int redPixelCount = 0;
+			int totalPixelCount = projectedPixels.size();
+			for (const auto& location : projectedPixels) {
+				int x = location.first;
+				int y = location.second;
+				auto color = reference.get(x, y);
+				int red = color[0];
+				int green = color[1];
+				int blue = color[2];
+				double averageColor = (red + green + blue) / 3.0;
+				if (red > (averageColor * 1.5)) {
+					redPixelCount++;
+				}
 			}
-			if (circle.radius.radius > maximumRadius) {
-				maximumRadius = circle.radius.radius;
+			if (redPixelCount > totalPixelCount * 0.3) {
+				pennyCount++;
+				pennyRadiiCumulativeTotal += circle.radius.radius;
 			}
 		}
-
-		return MoneyCountingResult { 0, 0, 0, 0 };
+		if (pennyCount == 0) {
+			return -1;
+		} else {
+			return pennyRadiiCumulativeTotal / pennyCount;
+		}
 	}
 
 	void part2() {
 		using tjcv::ColorImage;
 
 		dbg("Loading image\n");
-		auto colorImage = ColorImage::fromPPM("coins_harder_tj_crop_0.ppm");
+		auto colorImage = ColorImage::fromPPM("coins_easy_tj_crop_0.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		const int MIN_RADIUS = 60;
-		const int MAX_RADIUS = 300;
+		const int MAX_RADIUS = 200;
 		const int VOTE_LENGTH = -1;//MAX_RADIUS;
 		const double SCORE_THRESHOLD = 1.5;
 		const int RING_WIDTH = 2;
 		
 		// 2 * EDGES_GAUSSIAN_KERNEL_RADIUS + 1 = Kernel Size
-		const int EDGES_GAUSSIAN_KERNEL_RADIUS = 8;
+		const int EDGES_GAUSSIAN_KERNEL_RADIUS = 14;
 		const int MAX_POSSIBLE_EDGE_GRADIENT = tjcv::MAX_POSSIBLE_EDGE_GRADIENT / EDGES_GAUSSIAN_KERNEL_RADIUS;
 		const int EDGE_LOWER_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.1;
 		const int EDGE_UPPER_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.2;
 
+		dbg("Edge lower threshold: " << EDGE_LOWER_THRESHOLD << '\n');
+		dbg("Edge upper threshold: " << EDGE_UPPER_THRESHOLD << '\n');
+
 		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = MIN_RADIUS * 2;
-		// const int CENTER_DEDUPE_SQUARE_SIZE = 25;
-		const int CIRCLE_DEDUPE_SQUARE_SIZE = 20;
-		const int CENTER_VOTES_THRESHOLD = 30;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 25;
+		const int CENTER_VOTES_THRESHOLD = 10;//3 * SCALE_FACTOR;
 		const int VOTES_GAUSSIAN_KERNEL_SIZE = 9;
 		const int VOTES_GAUSSIAN_STDDEV = 3;
 
