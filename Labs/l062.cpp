@@ -333,14 +333,23 @@ namespace tjcv {
 	GrayscaleImage GrayscaleImage::applyGaussianFilter(int kernelSize, double standardDeviation, ConvolveFillType fillType) {
 		double **kernel = new double*[kernelSize];
 		double prefix = 1 / (2 * PI * _square(standardDeviation));
+		double kernelSum = 0;
 		int k = (kernelSize - 1) / 2;
 		for (int i = -k; i <= k; i++) {
 			kernel[i + k] = new double[kernelSize];
 			for (int j = -k; j <= k; j++) {
 				double exponent = -(i * i + j * j) / (2 * _square(standardDeviation));
 				kernel[i + k][j + k] = prefix * pow(E, exponent);
+				kernelSum += kernel[i + k][j + k];
 			}
 		}
+		// Normalize the kernel
+		for (int i = -k; i <= k; i++) {
+			for (int j = -k; j <= k; j++) {
+				kernel[i + k][j + k] /= kernelSum;
+			}
+		}
+		
 
 		GrayscaleImage newImage (width, height, this->max);
 
@@ -1016,6 +1025,10 @@ namespace lab6 {
 			int magnitude = magnitudes.get(pixelX, pixelY);
 			double magnitudeScaled = (double) magnitude / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
 
+			if (magnitudeScaled > 0.01) {
+				magnitudeScaled = 1;
+			}
+
 			// The magnitude from the center of the circle is scaled to be 1.
 			double dotProduct = magnitudeScaled * angleMatch;
 
@@ -1213,8 +1226,8 @@ namespace lab6 {
 		const int MIN_RADIUS = 8;
 		const int MAX_RADIUS = 40;
 		const int VOTE_LENGTH = MAX_RADIUS;
-		const double SCORE_THRESHOLD = 0.05;
-		const int RING_WIDTH = 1;
+		const double SCORE_THRESHOLD = 0.01;
+		const int RING_WIDTH = 2;
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD);
