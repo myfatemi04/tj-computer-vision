@@ -400,7 +400,7 @@ namespace tjcv {
 			}
 		}
 
-		dbg("Created Sobel filter for type " << type << " for kernelSize " << kernelSize << '\n');
+		dbg("Created Sobel filter of type " << type << " for kernelSize " << kernelSize << '\n');
 
 		GrayscaleImage newImage (width, height, this->max);
 
@@ -599,12 +599,7 @@ namespace lab5 {
 	 * touching a "strong" edge are automatically promoted to "strong" edges. This process is
 	 * repeated until there are no more changes.
 	 */
-	GrayscaleImage hysteresis(GrayscaleImage magnitudes, double lowerThreshold_d, double upperThreshold_d, int gaussianFilterRadius) {
-		double lowerThreshold = 127 * lowerThreshold_d / gaussianFilterRadius;
-		double upperThreshold = 127 * upperThreshold_d / gaussianFilterRadius;
-
-		dbg("lowerThreshold, upperThreshold = " << lowerThreshold << ", " << upperThreshold << '\n');
-
+	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold, int gaussianFilterRadius) {
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
 		GrayscaleImage newImage(magnitudes.getWidth(), magnitudes.getHeight(), 1);
@@ -791,8 +786,7 @@ namespace lab5 {
 	 * @param lowerThreshold The lower threshold to use for hysteresis (Weak edge)
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
-	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, double lowerThreshold, double upperThreshold) {
-		int gaussianFilterRadius = 3;
+	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold, int gaussianFilterRadius) {
 
 		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(2 * gaussianFilterRadius + 1, 3, tjcv::FILL_TYPE_ORIGINAL_PIXEL);
 		afterGaussian.save("imageg.ppm");
@@ -999,7 +993,8 @@ namespace lab6 {
 		double **angles,
 		int x,
 		int y,
-		int radius) {
+		int radius,
+		int maxPossibleEdgeGradient) {
 		double score = 0;
 		auto pixels = tjcv::getCirclePixels(x, y, radius);
 
@@ -1014,18 +1009,13 @@ namespace lab6 {
 			double intendedAngle = atan2((double) (pixelY - y), (double) (pixelX - x));
 			double actualAngle = angles[y][x];
 			double theta = actualAngle - intendedAngle;
-
 			double angleMatch = _safeAbs(cos(theta));
-
-			// if (angleMatch < 0.5) continue;
-
-			// angleMatch = (angleMatch - 0.5) * 2;
 
 			// Magnitude
 			int magnitude = magnitudes.get(pixelX, pixelY);
-			double magnitudeScaled = (double) magnitude / tjcv::MAX_POSSIBLE_EDGE_GRADIENT;
+			double magnitudeScaled = (double) magnitude / maxPossibleEdgeGradient;
 
-			if (magnitudeScaled > 0.01) {
+			if (magnitudeScaled > 0.1) {
 				magnitudeScaled = 1;
 			}
 
@@ -1034,9 +1024,6 @@ namespace lab6 {
 
 			// For some reason, the absolute value function outputs '0'
 			score += dotProduct < 0 ? -dotProduct : dotProduct;
-
-			// dbg("magnitude:" << magnitude << ", magnitudeScaled:" << magnitudeScaled << ", cos(theta):" << cos(theta) << ", dot: " << dotProduct << '\n');
-
 		}
 
 		return score;
@@ -1053,11 +1040,12 @@ namespace lab6 {
 		int minRadius,
 		int maxRadius,
 		int ringWidth,
-		double minScore) {
+		double minScore,
+		int maxPossibleEdgeGradient) {
 		// Count the edges on each radius
 		double *radiusScores = new double[maxRadius - minRadius];
 		for (int radius = minRadius; radius < maxRadius; radius++) {
-			radiusScores[radius - minRadius] = scoreCircleCandidate(magnitudes, angles, x, y, radius);
+			radiusScores[radius - minRadius] = scoreCircleCandidate(magnitudes, angles, x, y, radius, maxPossibleEdgeGradient);
 		}
 
 		std::vector<RadiusResult> radii;
@@ -1216,31 +1204,36 @@ namespace lab6 {
 		using tjcv::ColorImage;
 
 		dbg("Loading image\n");
-		auto colorImage = ColorImage::fromPPM("coins_easy_tj_resized.ppm");
+		auto colorImage = ColorImage::fromPPM("coins_harder_tj_crop_0.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const double EDGE_LOWER_THRESHOLD = 0.1;
-		const double EDGE_UPPER_THRESHOLD = 0.4;
-		
-		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 50;
-		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
-		const int CIRCLE_DEDUPE_SQUARE_SIZE = 3;
-		const int CENTER_VOTES_THRESHOLD = 3;
-		
-		const int MIN_RADIUS = 8;
-		const int MAX_RADIUS = 40;
-		const int VOTE_LENGTH = MAX_RADIUS;
-		const double SCORE_THRESHOLD = 0.01;
+		const int MIN_RADIUS = 60;
+		const int MAX_RADIUS = 300;
+		const int VOTE_LENGTH = -1;//MAX_RADIUS;
+		const double SCORE_THRESHOLD = 1.5;
 		const int RING_WIDTH = 2;
+		
+		// 2 * EDGES_GAUSSIAN_KERNEL_RADIUS + 1 = Kernel Size
+		const int EDGES_GAUSSIAN_KERNEL_RADIUS = 8;
+		const int MAX_POSSIBLE_EDGE_GRADIENT = tjcv::MAX_POSSIBLE_EDGE_GRADIENT / EDGES_GAUSSIAN_KERNEL_RADIUS;
+		const int EDGE_LOWER_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.1;
+		const int EDGE_UPPER_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.2;
+
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = MIN_RADIUS * 2;
+		// const int CENTER_DEDUPE_SQUARE_SIZE = 25;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 20;
+		const int CENTER_VOTES_THRESHOLD = 30;
+		const int VOTES_GAUSSIAN_KERNEL_SIZE = 9;
+		const int VOTES_GAUSSIAN_STDDEV = 3;
 
 		dbg("Detecting edges\n");
-		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD);
+		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD, EDGES_GAUSSIAN_KERNEL_RADIUS);
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
-		votes = votes.applyGaussianFilter(9, 3, tjcv::FILL_TYPE_BLACK);
+		votes = votes.applyGaussianFilter(VOTES_GAUSSIAN_KERNEL_SIZE, VOTES_GAUSSIAN_STDDEV, tjcv::FILL_TYPE_BLACK);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
@@ -1264,7 +1257,7 @@ namespace lab6 {
 			int y = center.second;
 			tjcv::drawFilledCircle(imageWithCenters, x, y, 5, CENTER_COLOR);
 			
-			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, MIN_RADIUS, MAX_RADIUS, RING_WIDTH, SCORE_THRESHOLD);
+			auto radii = lab6::findRadii(detection.magnitudes, detection.angles, x, y, MIN_RADIUS, MAX_RADIUS, RING_WIDTH, SCORE_THRESHOLD, MAX_POSSIBLE_EDGE_GRADIENT);
 			int bestRadius = -1;
 			double bestRadiusScore = -1;
 			for (const auto& radiusResult : radii) {
