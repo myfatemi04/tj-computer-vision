@@ -872,11 +872,12 @@ namespace lab6 {
 		before it in the cache. So, rowMaximumCache[y % squareSize] will be consistent.
 		*/
 		_Maximum2D *rowMaximumCache = new _Maximum2D[squareSize];
-
+		
 		for (int x = 0; x + squareSize < values.getWidth(); x++) {
 			// Generate row maximum cache
 			for (int y = 0; y < squareSize && y < values.getWidth(); y++) {
-				rowMaximumCache[y] = __findRowMaximum(values, squareSize, x, y);
+				auto rowMaximum = __findRowMaximum(values, squareSize, x, y);
+				rowMaximumCache[y] = rowMaximum;
 			}
 
 			for (int nextRowY = squareSize; nextRowY < values.getHeight(); nextRowY++) {
@@ -889,7 +890,14 @@ namespace lab6 {
 				bool centerRowIsMax = true;
 				int thisRowY = nextRowY - squareSize;
 				int centerRowY = thisRowY + squareSize / 2;
+				int centerColX = x + squareSize / 2;
 				_Maximum2D centerRowMaximum = rowMaximumCache[centerRowY % squareSize];
+				
+				bool centerRowLocalMaximumIsAlsoCenterColumn = centerColX == centerRowMaximum.x;
+				if (!centerRowLocalMaximumIsAlsoCenterColumn) {
+					continue;
+				}
+
 				for (int testRowY = thisRowY; testRowY <= nextRowY; testRowY++) {
 					int testRowCacheIndex = testRowY % squareSize;
 					if (rowMaximumCache[testRowCacheIndex].value > centerRowMaximum.value) {
@@ -1205,8 +1213,8 @@ namespace lab6 {
 		const int MIN_RADIUS = 8;
 		const int MAX_RADIUS = 40;
 		const int VOTE_LENGTH = MAX_RADIUS;
-		const double SCORE_THRESHOLD = 0.03;
-		const int RING_WIDTH = 3;
+		const double SCORE_THRESHOLD = 0.05;
+		const int RING_WIDTH = 1;
 
 		dbg("Detecting edges\n");
 		auto detection = lab5::detectEdges(grayscaleImage, EDGE_LOWER_THRESHOLD, EDGE_UPPER_THRESHOLD);
