@@ -447,7 +447,7 @@ namespace tjcv {
 			void step(int count) {
 				if (iterateOverX) {
 					currentX += count;
-					buildup += count * cos(angle) / sin(angle);
+					buildup += count * sin(angle) / cos(angle);
 					int overshoot = (int) buildup;
 					if (overshoot != 0) {
 						buildup -= overshoot;
@@ -455,7 +455,7 @@ namespace tjcv {
 					}
 				} else {
 					currentY += count;
-					buildup += count * sin(angle) / cos(angle);
+					buildup += count * cos(angle) / sin(angle);
 					int overshoot = (int) buildup;
 					if (overshoot != 0) {
 						buildup -= overshoot;
@@ -1049,7 +1049,7 @@ namespace lab6 {
 			if (ratio > minScore) {
 				radii.push_back({radius, ratio});
 			} else if (ratio > minScore / 2) {
-				dbg("Found almost circle with ratio " << ratio << '\n');
+				// dbg("Found almost circle with ratio " << ratio << '\n');
 			}
 		}
 		return radii;
@@ -1063,8 +1063,10 @@ namespace lab6 {
 	 */
 	std::set<CircleResult> dedupe(const std::set<CircleResult>& circles, int gridSquareWidth, int gridSquareHeight, int imageWidth, int imageHeight) {
 		std::set<CircleResult> deduplicated;
-		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSquareWidth);
-		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSquareHeight);
+		int gridSubsquareWidth = gridSquareWidth / 3;
+		int gridSubsquareHeight = gridSubsquareHeight / 3;
+		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSubsquareWidth);
+		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSubsquareHeight);
 
 		const CircleResult* **occupiedGridSquares = new const CircleResult* *[verticalGridSquareCount];
 		for (int y = 0; y < verticalGridSquareCount; y++) {
@@ -1077,16 +1079,37 @@ namespace lab6 {
 		for (auto& circle : circles) {
 			int x = circle.x;
 			int y = circle.y;
-			int gridSquareX = x / gridSquareWidth;
-			int gridSquareY = y / gridSquareHeight;
+			int gridSquareX = x / gridSubsquareWidth;
+			int gridSquareY = y / gridSubsquareHeight;
 
-			int scoreInGridSquare = -1;
-			const CircleResult *gridSquareResult = occupiedGridSquares[gridSquareY][gridSquareX];
-			if (gridSquareResult != nullptr) {
-				scoreInGridSquare = gridSquareResult->radius.score;
+			int maxScoreInSurroundingGridSquare = -1;
+			int maxScoreSurroundingGridSquareX = -1;
+			int maxScoreSurroundingGridSquareY = -1;
+
+			// Check surrounding grid squares
+			for (int i = gridSquareY - 1; i <= gridSquareY + 1; i++) {
+				if (i < 0 || i >= verticalGridSquareCount) continue;
+				for (int j = gridSquareX - 1; j <= gridSquareX + 1; j++) {
+					if (j < 0 || j >= horizontalGridSquareCount) continue;
+
+					const CircleResult *gridSquareResult = occupiedGridSquares[i][j];
+					if (gridSquareResult == nullptr) {
+						continue;
+					}
+					
+					int scoreInGridSquare = gridSquareResult->radius.score;
+					if (scoreInGridSquare > maxScoreInSurroundingGridSquare) {
+						maxScoreInSurroundingGridSquare = scoreInGridSquare;
+						maxScoreSurroundingGridSquareY = i;
+						maxScoreSurroundingGridSquareX = j;
+					}
+				}
 			}
 
-			if (circle.radius.score > scoreInGridSquare) {
+			if (circle.radius.score > maxScoreInSurroundingGridSquare) {
+				if (maxScoreSurroundingGridSquareX >= 0 && maxScoreSurroundingGridSquareY >= 0) {
+					occupiedGridSquares[maxScoreSurroundingGridSquareY][maxScoreSurroundingGridSquareX] = nullptr;
+				}
 				occupiedGridSquares[gridSquareY][gridSquareX] = new CircleResult { x, y, circle.radius };
 			}
 		}
@@ -1157,12 +1180,12 @@ namespace lab6 {
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const double EDGE_LOWER_THRESHOLD = 0.2;
-		const double EDGE_UPPER_THRESHOLD = 0.4;
+		const double EDGE_LOWER_THRESHOLD = 0.1;
+		const double EDGE_UPPER_THRESHOLD = 0.5;
 		
 		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 100;
 		// const int CENTER_DEDUPE_SQUARE_SIZE = 25;
-		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 30;
 		const int CENTER_VOTES_THRESHOLD = 7;
 		
 		const int MIN_RADIUS = 8;
