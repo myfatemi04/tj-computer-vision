@@ -1273,7 +1273,7 @@ namespace lab6 {
 		using tjcv::ColorImage;
 
 		dbg("Loading image\n");
-		auto colorImage = ColorImage::fromPPM("coins_easy_tj_crop_1.ppm");
+		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		const int MIN_RADIUS = 60;
@@ -1400,6 +1400,14 @@ namespace lab6 {
 
 		std::ofstream results("results.txt");
 
+		results << "Result:\n";
+		results << coinCountsByType[COIN_TYPE_PENNY] << " pennies\n";
+		results << coinCountsByType[COIN_TYPE_NICKEL] << " nickels\n";
+		results << coinCountsByType[COIN_TYPE_DIME] << " dimes\n";
+		results << coinCountsByType[COIN_TYPE_QUARTER] << " quarters\n";
+		results << coinCountsByType[COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
+		results << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
+
 		std::cout << "Result:\n";
 		std::cout << coinCountsByType[COIN_TYPE_PENNY] << " pennies\n";
 		std::cout << coinCountsByType[COIN_TYPE_NICKEL] << " nickels\n";
@@ -1407,6 +1415,8 @@ namespace lab6 {
 		std::cout << coinCountsByType[COIN_TYPE_QUARTER] << " quarters\n";
 		std::cout << coinCountsByType[COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
 		std::cout << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
+
+		results.close();
 	}
 }
 
