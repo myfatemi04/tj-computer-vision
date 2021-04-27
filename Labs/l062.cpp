@@ -1185,6 +1185,55 @@ namespace lab6 {
 		int pennies, nickels, dimes, quarters;
 	} MoneyCountingResult;
 
+	enum CoinType {
+		COIN_TYPE_PENNY = 0,
+		COIN_TYPE_NICKEL = 1,
+		COIN_TYPE_DIME = 2,
+		COIN_TYPE_QUARTER = 3,
+		COIN_TYPE_HALF_DOLLAR = 4,
+		COIN_TYPE_SILVER_DOLLAR = 5
+	};
+
+	double absoluteError(double a, double b) {
+		return _safeAbs(a - b);
+	}
+
+	const double PENNY_RADIUS_MM = 19.05;
+	const double NICKEL_RELATIVE_TO_PENNY = 21.21 / PENNY_RADIUS_MM;
+	const double DIME_RELATIVE_TO_PENNY = 17.91 / PENNY_RADIUS_MM;
+	const double QUARTER_RELATIVE_TO_PENNY = 24.26 / PENNY_RADIUS_MM;
+	const double HALF_DOLLAR_RELATIVE_TO_PENNY = 30.61 / PENNY_RADIUS_MM;
+	const double SILVER_DOLLAR_RELATIVE_TO_PENNY = 38.1 / PENNY_RADIUS_MM;
+
+	CoinType estimateCoinType(double unknownCoinRadius, double pennyRadius) {
+		CoinType leastErrorCoinType = COIN_TYPE_PENNY;
+		double leastErrorCoinTypeError = absoluteError(unknownCoinRadius, pennyRadius);
+		double tmp;
+		
+		if ((tmp = absoluteError(NICKEL_RELATIVE_TO_PENNY * pennyRadius, unknownCoinRadius)) < leastErrorCoinTypeError) {
+			leastErrorCoinType = COIN_TYPE_NICKEL;
+			leastErrorCoinTypeError = tmp;
+		}
+		if ((tmp = absoluteError(DIME_RELATIVE_TO_PENNY * pennyRadius, unknownCoinRadius)) < leastErrorCoinTypeError) {
+			leastErrorCoinType = COIN_TYPE_DIME;
+			leastErrorCoinTypeError = tmp;
+		}
+		if ((tmp = absoluteError(QUARTER_RELATIVE_TO_PENNY * pennyRadius, unknownCoinRadius)) < leastErrorCoinTypeError) {
+			leastErrorCoinType = COIN_TYPE_QUARTER;
+			leastErrorCoinTypeError = tmp;
+		}
+		if ((tmp = absoluteError(HALF_DOLLAR_RELATIVE_TO_PENNY * pennyRadius, unknownCoinRadius)) < leastErrorCoinTypeError) {
+			leastErrorCoinType = COIN_TYPE_HALF_DOLLAR;
+			leastErrorCoinTypeError = tmp;
+		}
+		if ((tmp = absoluteError(SILVER_DOLLAR_RELATIVE_TO_PENNY * pennyRadius, unknownCoinRadius)) < leastErrorCoinTypeError) {
+			leastErrorCoinType = COIN_TYPE_SILVER_DOLLAR;
+			leastErrorCoinTypeError = tmp;
+		}
+
+		return leastErrorCoinType;
+	}
+
 	double findPennyRadius(const std::set<CircleResult>& circles, const tjcv::ColorImage& reference) {
 		double pennyRadiiCumulativeTotal = 0;
 		int pennyCount = 0;
@@ -1295,12 +1344,39 @@ namespace lab6 {
 		dbg("Deduplicating\n");
 		deduplicatedCircles = tentativeCircles;
 		deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
+
+		int** CIRCLE_COLORS = new int*[6];
+		CIRCLE_COLORS[COIN_TYPE_PENNY] = new int[3] { 255, 0, 0 };
+		CIRCLE_COLORS[COIN_TYPE_NICKEL] = new int[3] { 255, 0, 255 };
+		CIRCLE_COLORS[COIN_TYPE_DIME] = new int[3] { 0, 0, 255 };
+		CIRCLE_COLORS[COIN_TYPE_QUARTER] = new int[3] { 0, 255, 0 };
+		CIRCLE_COLORS[COIN_TYPE_SILVER_DOLLAR] = new int[3] { 255, 255, 0 };
+		
+		int *coinValuesByType = new int[6];
+		coinValuesByType[COIN_TYPE_PENNY] = 1;
+		coinValuesByType[COIN_TYPE_NICKEL] = 5;
+		coinValuesByType[COIN_TYPE_DIME] = 10;
+		coinValuesByType[COIN_TYPE_QUARTER] = 25;
+		coinValuesByType[COIN_TYPE_SILVER_DOLLAR] = 100;
+
+		double pennyRadius = findPennyRadius(deduplicatedCircles, colorImage);
+
+		int *coinCountsByType = new int[6];
+		for (int i = 0; i < 6; i++) coinCountsByType[i] = 0;
+
+		int totalValueInCents = 0;
+
 		for (const auto& circle : deduplicatedCircles) {
-			int val = min(255, (int) (255 * ((circle.radius.score - SCORE_THRESHOLD) / (highestRadiusScore - SCORE_THRESHOLD))));
-			int *CIRCLE_COLOR = new int[3] { 255 - val, val, 0 };
-			dbg("circle color: " << val << '\n');
-			tjcv::drawCircle(colorImage, circle.x, circle.y, circle.radius.radius, CIRCLE_COLOR);
-			dbg("Circle: {x=" << circle.x << ", y=" << circle.y << ", r=" << circle.radius.radius << ", score=" << circle.radius.score << "}\n");
+			double coinRadius = circle.radius.radius;
+
+			CoinType estimatedCoinType = estimateCoinType(coinRadius, pennyRadius);
+			int* circleColor = CIRCLE_COLORS[estimatedCoinType];
+
+			coinCountsByType[estimatedCoinType]++;
+			totalValueInCents += coinValuesByType[estimatedCoinType];
+
+			tjcv::drawCircle(colorImage, circle.x, circle.y, circle.radius.radius, circleColor);
+			dbg("Coin: {x=" << circle.x << ", y=" << circle.y << ", r=" << circle.radius.radius << ", score=" << circle.radius.score << "}\n");
 		}
 
 		imageWithCenters.save("imageCC.ppm");
@@ -1310,6 +1386,17 @@ namespace lab6 {
 		dbg("Saving\n");
 
 		colorImage.save("coins.ppm");
+
+		int dollarCount = totalValueInCents / 100;
+		int centCount = totalValueInCents % 100;
+
+		std::cout << "Result:\n";
+		std::cout << coinCountsByType[COIN_TYPE_PENNY] << " pennies\n";
+		std::cout << coinCountsByType[COIN_TYPE_NICKEL] << " nickels\n";
+		std::cout << coinCountsByType[COIN_TYPE_DIME] << " dimes\n";
+		std::cout << coinCountsByType[COIN_TYPE_QUARTER] << " quarters\n";
+		std::cout << coinCountsByType[COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
+		std::cout << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
 	}
 }
 
