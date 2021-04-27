@@ -1099,7 +1099,7 @@ namespace lab6 {
 	std::set<CircleResult> dedupe(const std::set<CircleResult>& circles, int gridSquareWidth, int gridSquareHeight, int imageWidth, int imageHeight) {
 		std::set<CircleResult> deduplicated;
 		int gridSubsquareWidth = gridSquareWidth / 3;
-		int gridSubsquareHeight = gridSubsquareHeight / 3;
+		int gridSubsquareHeight = gridSquareHeight / 3;
 		int horizontalGridSquareCount = _divideRoundUp(imageWidth, gridSubsquareWidth);
 		int verticalGridSquareCount   = _divideRoundUp(imageHeight, gridSubsquareHeight);
 
@@ -1143,7 +1143,11 @@ namespace lab6 {
 
 			if (circle.radius.score > maxScoreInSurroundingGridSquare) {
 				if (maxScoreSurroundingGridSquareX >= 0 && maxScoreSurroundingGridSquareY >= 0) {
+					auto removedCircle = occupiedGridSquares[maxScoreSurroundingGridSquareY][maxScoreSurroundingGridSquareX];
 					occupiedGridSquares[maxScoreSurroundingGridSquareY][maxScoreSurroundingGridSquareX] = nullptr;
+					dbg("Removing a surrounding circle because this one had a higher score.\n");
+					dbg("The other circle had x = " << removedCircle->x << ", y = " << removedCircle->y << '\n');
+					dbg("This circle had x = " << x << ", y = " << y << '\n');
 				}
 				occupiedGridSquares[gridSquareY][gridSquareX] = new CircleResult { x, y, circle.radius };
 			}
@@ -1220,7 +1224,7 @@ namespace lab6 {
 		
 		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 50;
 		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
-		const int CIRCLE_DEDUPE_SQUARE_SIZE = 30;
+		const int CIRCLE_DEDUPE_SQUARE_SIZE = 3;
 		const int CENTER_VOTES_THRESHOLD = 3;
 		
 		const int MIN_RADIUS = 8;
@@ -1279,7 +1283,7 @@ namespace lab6 {
 
 		dbg("Deduplicating\n");
 		deduplicatedCircles = tentativeCircles;
-		// deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
+		deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 		for (const auto& circle : deduplicatedCircles) {
 			int val = min(255, (int) (255 * ((circle.radius.score - SCORE_THRESHOLD) / (highestRadiusScore - SCORE_THRESHOLD))));
 			int *CIRCLE_COLOR = new int[3] { 255 - val, val, 0 };
