@@ -872,7 +872,7 @@ namespace lab6 {
 		before it in the cache. So, rowMaximumCache[y % squareSize] will be consistent.
 		*/
 		_Maximum2D *rowMaximumCache = new _Maximum2D[squareSize];
-		
+
 		for (int x = 0; x + squareSize < values.getWidth(); x++) {
 			// Generate row maximum cache
 			for (int y = 0; y < squareSize && y < values.getWidth(); y++) {
@@ -1199,16 +1199,16 @@ namespace lab6 {
 		using tjcv::ColorImage;
 
 		dbg("Loading image\n");
-		auto colorImage = ColorImage::fromPPM("image.ppm");
+		auto colorImage = ColorImage::fromPPM("coins_easy_tj_resized.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		const double EDGE_LOWER_THRESHOLD = 0.1;
 		const double EDGE_UPPER_THRESHOLD = 0.4;
 		
-		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 70;
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 50;
 		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
 		const int CIRCLE_DEDUPE_SQUARE_SIZE = 30;
-		const int CENTER_VOTES_THRESHOLD = 5;
+		const int CENTER_VOTES_THRESHOLD = 3;
 		
 		const int MIN_RADIUS = 8;
 		const int MAX_RADIUS = 40;
