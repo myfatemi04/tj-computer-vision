@@ -1,4 +1,4 @@
-// l053.cpp
+// l062.cpp
 // Michael Fatemi
 
 #include <iostream>
@@ -174,6 +174,7 @@ namespace tjcv {
 		std::ifstream handle(filename);
 		std::string _ppmtype;
 		handle >> _ppmtype;
+
 		int width, height, _max;
 		handle >> width >> height >> _max;
 
@@ -1272,13 +1273,13 @@ namespace lab6 {
 		using tjcv::ColorImage;
 
 		dbg("Loading image\n");
-		auto colorImage = ColorImage::fromPPM("image.ppm");
+		auto colorImage = ColorImage::fromPPM("coins_easy_tj_crop_1.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		const int MIN_RADIUS = 60;
 		const int MAX_RADIUS = 200;
 		const int VOTE_LENGTH = -1;//MAX_RADIUS;
-		const double SCORE_THRESHOLD = 1.5;
+		const double SCORE_THRESHOLD = 2;
 		const int RING_WIDTH = 2;
 		
 		// 2 * EDGES_GAUSSIAN_KERNEL_RADIUS + 1 = Kernel Size
@@ -1386,7 +1387,7 @@ namespace lab6 {
 			dbg("Coin: {x=" << circle.x << ", y=" << circle.y << ", r=" << coinRadius << ", score=" << circle.radius.score << "}\n");
 		}
 
-		imageWithCenters.save("imageCC.ppm");
+		// imageWithCenters.save("imageCC.ppm");
 
 		dbg("Found " << tentativeCircles.size() << " radii before deduplication\n");
 		dbg("Found " << deduplicatedCircles.size() << " radii after deduplication\n");
@@ -1396,6 +1397,8 @@ namespace lab6 {
 
 		int dollarCount = totalValueInCents / 100;
 		int centCount = totalValueInCents % 100;
+
+		std::ofstream results("results.txt");
 
 		std::cout << "Result:\n";
 		std::cout << coinCountsByType[COIN_TYPE_PENNY] << " pennies\n";
