@@ -35,6 +35,12 @@ namespace tjcv {
 	*/
 	const double MAX_POSSIBLE_EDGE_GRADIENT = (2 * (127 + 127 * 2 + 127));
 
+	enum ConvolveFillType {
+		FILL_TYPE_BLACK,
+		FILL_TYPE_WHITE,
+		FILL_TYPE_ORIGINAL_PIXEL
+	};
+
 	class GrayscaleImage;
 	class ColorImage;
 
@@ -89,7 +95,7 @@ namespace tjcv {
 
 			GrayscaleImage convolve(GrayscaleImage filter, int mode);
 
-			GrayscaleImage applyGaussianFilter(int kernelSize, double standardDeviation);
+			GrayscaleImage applyGaussianFilter(int kernelSize, double standardDeviation, ConvolveFillType fillType);
 			GrayscaleImage applySobel(int kernelSize, int mode);
 	};
 
@@ -323,8 +329,8 @@ namespace tjcv {
 		
 		return convolved;
 	}
-	
-	GrayscaleImage GrayscaleImage::applyGaussianFilter(int kernelSize, double standardDeviation) {
+
+	GrayscaleImage GrayscaleImage::applyGaussianFilter(int kernelSize, double standardDeviation, ConvolveFillType fillType) {
 		double **kernel = new double*[kernelSize];
 		double prefix = 1 / (2 * PI * _square(standardDeviation));
 		int k = (kernelSize - 1) / 2;
@@ -340,10 +346,16 @@ namespace tjcv {
 
 		for (int x = 0; x < width; x++) {
 			for (int y = 0; y < height; y++) {
+				int valueIfEmpty = 0;
+				if (fillType == FILL_TYPE_BLACK) {
+					valueIfEmpty = 0;
+				} else if (fillType == FILL_TYPE_ORIGINAL_PIXEL) {
+					valueIfEmpty = get(x, y);
+				}
 				if (x < k || y < k) {
-					newImage.set(x, y, get(x, y));
+					newImage.set(x, y, valueIfEmpty);
 				} else if (((x + k) >= width) || ((y + k) >= height)) {
-					newImage.set(x, y, get(x, y));
+					newImage.set(x, y, valueIfEmpty);
 				} else {
 					double totalValue = 0;
 					for (int i = -k; i <= k; i++) {
@@ -773,7 +785,7 @@ namespace lab5 {
 	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, double lowerThreshold, double upperThreshold) {
 		int gaussianFilterRadius = 3;
 
-		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(2 * gaussianFilterRadius + 1, 3);
+		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(2 * gaussianFilterRadius + 1, 3, tjcv::FILL_TYPE_ORIGINAL_PIXEL);
 		afterGaussian.save("imageg.ppm");
 		GrayscaleImage xGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_HORIZONTAL);
 		GrayscaleImage yGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_VERTICAL);
@@ -988,7 +1000,9 @@ namespace lab6 {
 
 			double angleMatch = _safeAbs(cos(theta));
 
-			if (angleMatch < 0.5) continue;
+			// if (angleMatch < 0.5) continue;
+
+			// angleMatch = (angleMatch - 0.5) * 2;
 
 			// Magnitude
 			int magnitude = magnitudes.get(pixelX, pixelY);
@@ -1096,7 +1110,7 @@ namespace lab6 {
 					if (gridSquareResult == nullptr) {
 						continue;
 					}
-					
+
 					int scoreInGridSquare = gridSquareResult->radius.score;
 					if (scoreInGridSquare > maxScoreInSurroundingGridSquare) {
 						maxScoreInSurroundingGridSquare = scoreInGridSquare;
@@ -1181,17 +1195,17 @@ namespace lab6 {
 		auto grayscaleImage = colorImage.toGrayscale();
 
 		const double EDGE_LOWER_THRESHOLD = 0.1;
-		const double EDGE_UPPER_THRESHOLD = 0.5;
+		const double EDGE_UPPER_THRESHOLD = 0.4;
 		
-		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 100;
-		// const int CENTER_DEDUPE_SQUARE_SIZE = 25;
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 70;
+		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
 		const int CIRCLE_DEDUPE_SQUARE_SIZE = 30;
-		const int CENTER_VOTES_THRESHOLD = 7;
+		const int CENTER_VOTES_THRESHOLD = 5;
 		
 		const int MIN_RADIUS = 8;
 		const int MAX_RADIUS = 40;
 		const int VOTE_LENGTH = MAX_RADIUS;
-		const double SCORE_THRESHOLD = 0.02;
+		const double SCORE_THRESHOLD = 0.03;
 		const int RING_WIDTH = 3;
 
 		dbg("Detecting edges\n");
@@ -1201,7 +1215,7 @@ namespace lab6 {
 
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
-		votes = votes.applyGaussianFilter(9, 3);
+		votes = votes.applyGaussianFilter(9, 3, tjcv::FILL_TYPE_BLACK);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
@@ -1243,8 +1257,8 @@ namespace lab6 {
 		}
 
 		dbg("Deduplicating\n");
-
-		deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
+		deduplicatedCircles = tentativeCircles;
+		// deduplicatedCircles = dedupe(tentativeCircles, CIRCLE_DEDUPE_SQUARE_SIZE, CIRCLE_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 		for (const auto& circle : deduplicatedCircles) {
 			int val = min(255, (int) (255 * ((circle.radius.score - SCORE_THRESHOLD) / (highestRadiusScore - SCORE_THRESHOLD))));
 			int *CIRCLE_COLOR = new int[3] { 255 - val, val, 0 };
