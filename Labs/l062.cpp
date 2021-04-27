@@ -90,6 +90,7 @@ namespace tjcv {
 			GrayscaleImage convolve(GrayscaleImage filter, int mode);
 
 			GrayscaleImage applyGaussianFilter(int kernelSize, double standardDeviation);
+			GrayscaleImage applySobel(int kernelSize, int mode);
 	};
 
 	ColorImage::ColorImage(int width, int height, int max): width(width), height(height), max(max) {
@@ -327,11 +328,11 @@ namespace tjcv {
 		double **kernel = new double*[kernelSize];
 		double prefix = 1 / (2 * PI * _square(standardDeviation));
 		int k = (kernelSize - 1) / 2;
-		for (int i = 0; i < kernelSize; i++) {
-			kernel[i] = new double[kernelSize];
-			for (int j = 0; j < kernelSize; j++) {
-				double exponent = -(_square(i - (k + 1)) + _square(j - (k + 1))) / (2 * _square(standardDeviation));
-				kernel[i][j] = prefix * pow(E, exponent);
+		for (int i = -k; i <= k; i++) {
+			kernel[i + k] = new double[kernelSize];
+			for (int j = -k; j <= k; j++) {
+				double exponent = -(i * i + j * j) / (2 * _square(standardDeviation));
+				kernel[i + k][j + k] = prefix * pow(E, exponent);
 			}
 		}
 
@@ -339,17 +340,20 @@ namespace tjcv {
 
 		for (int x = 0; x < width; x++) {
 			for (int y = 0; y < height; y++) {
-				if (y < k || x < k) {
+				if (x < k || y < k) {
 					newImage.set(x, y, get(x, y));
-				} else if ((y + k >= height) || (x + k >= height)) {
+				} else if (((x + k) >= width) || ((y + k) >= height)) {
 					newImage.set(x, y, get(x, y));
 				} else {
 					double totalValue = 0;
 					for (int i = -k; i <= k; i++) {
-						for (int j = -k; j < k; j++) {
-							totalValue += newImage.get(x + i, y + j) * kernel[i + k][j + k];
+						for (int j = -k; j <= k; j++) {
+							double kernelValue = kernel[i + k][j + k];
+							int pixelValue = get(x + i, y + j);
+							totalValue += pixelValue * kernelValue;
 						}
 					}
+					// dbg("totalValue: " << totalValue << ", originalValue: " << get(x, y) << '\n');
 					newImage.set(x, y, totalValue);
 				}
 			}
@@ -357,7 +361,53 @@ namespace tjcv {
 		
 		return newImage;
 	}
+
+	const int SOBEL_TYPE_VERTICAL = 0;
+	const int SOBEL_TYPE_HORIZONTAL = 1;
+
+	GrayscaleImage GrayscaleImage::applySobel(int kernelSize, int type) {
+		double **kernel = new double*[kernelSize];
+		int k = (kernelSize - 1) / 2;
+		for (int i = -k; i <= k; i++) {
+			kernel[i + k] = new double[kernelSize];
+			for (int j = -k; j <= k; j++) {
+				if (i == 0 && j == 0) {
+					kernel[i + k][j + k] = 0;
+				} else {
+					kernel[i + k][j + k] = (type == SOBEL_TYPE_HORIZONTAL ? j : i) / (i * i + j * j);
+				}
+			}
+		}
+
+		dbg("Created Sobel filter for type " << type << " for kernelSize " << kernelSize << '\n');
+
+		GrayscaleImage newImage (width, height, this->max);
+
+		for (int x = 0; x < width; x++) {
+			for (int y = 0; y < height; y++) {
+				if (y < k || x < k) {
+					newImage.set(x, y, 0);
+				} else if ((y + k >= height) || (x + k >= width)) {
+					newImage.set(x, y, 0);
+				} else {
+					double totalValue = 0;
+					for (int i = -k; i <= k; i++) {
+						for (int j = -k; j < k; j++) {
+							double kernelValue = kernel[i + k][j + k];
+							int pixelValue = get(x + i, y + j);
+							totalValue += pixelValue * kernelValue;
+						}
+					}
+					newImage.set(x, y, totalValue);
+				}
+			}
+		}
+
+		dbg("Applied Sobel filter successfully\n");
 	
+		return newImage;
+	}
+
 	typedef struct {
 		int x, y;
 		double radius;
@@ -376,10 +426,6 @@ namespace tjcv {
 				currentX = startX;
 				currentY = startY;
 				buildup = 0;
-
-				// dbg(cos(angle) << ", " << sin(angle) << '\n');
-				// dbg(_safeAbs(cos(angle)) << ", " << _safeAbs(sin(angle)) << '\n');
-
 				
 				iterateOverX = _safeAbs(cos(angle)) > _safeAbs(sin(angle));
 			}
@@ -527,62 +573,17 @@ namespace lab5 {
 		GrayscaleImage xGradient, yGradient;
 	} EdgeDetectionResult;
 
-	GrayscaleImage verticalSobel {
-		new int*[3] {
-			new int[3] {	1,	0, -1 },
-			new int[3] {	2,	0, -2 },
-			new int[3] {	1,	0, -1 }
-		},
-		3,
-		3
-	};
-	GrayscaleImage horizontalSobel {
-		new int*[3] {
-			new int[3] {	1,	2,	1 },
-			new int[3] {	0,	0,	0 },
-			new int[3] { -1, -2, -1 }
-		},
-		3,
-		3
-	};
-	GrayscaleImage gaussian3 {
-		new int*[3] {
-			new int[3] { 1, 2, 1 },
-			new int[3] { 2, 4, 2 },
-			new int[3] { 1, 2, 1 },
-		},
-		3,
-		3
-	};
-	GrayscaleImage gaussian5_1 {
-		new int*[5] {
-			new int[5] { 1,  4,  7,  4, 1 },
-			new int[5] { 4, 16, 26, 16, 4 },
-			new int[5] { 7, 26, 41, 26, 7 },
-			new int[5] { 4, 16, 26, 16, 4 },
-			new int[5] { 1,  4,  7,  4, 1 },
-		},
-		5,
-		5
-	};
-	GrayscaleImage gaussian5_3 {
-		new int*[5] {
-			new int[5] {16, 19, 20, 19, 16},
-			new int[5] {19, 22, 23, 22, 19},
-			new int[5] {20, 23, 25, 23, 20},
-			new int[5] {19, 22, 23, 22, 19},
-			new int[5] {16, 19, 20, 19, 16}
-		},
-		5,
-		5
-	};
-	
 	/**
 	 * hysteresis() takes an image and runs a double threshold on it. Then, any "weak" edges
 	 * touching a "strong" edge are automatically promoted to "strong" edges. This process is
 	 * repeated until there are no more changes.
 	 */
-	GrayscaleImage hysteresis(GrayscaleImage magnitudes, int lowerThreshold, int upperThreshold) {
+	GrayscaleImage hysteresis(GrayscaleImage magnitudes, double lowerThreshold_d, double upperThreshold_d, int gaussianFilterRadius) {
+		double lowerThreshold = 127 * lowerThreshold_d / gaussianFilterRadius;
+		double upperThreshold = 127 * upperThreshold_d / gaussianFilterRadius;
+
+		dbg("lowerThreshold, upperThreshold = " << lowerThreshold << ", " << upperThreshold << '\n');
+
 		// set of (x, y) pairs
 		std::set<std::pair<int, int>> unvisited;
 		GrayscaleImage newImage(magnitudes.getWidth(), magnitudes.getHeight(), 1);
@@ -653,40 +654,54 @@ namespace lab5 {
 	GrayscaleImage nonMaxSuppression(GrayscaleImage xGradient, GrayscaleImage yGradient, GrayscaleImage magnitudes) {
 		int width = xGradient.getWidth();
 		int height = xGradient.getHeight();
+
 		GrayscaleImage im(width, height, 1);
+
 		for (int y = 0; y < xGradient.getHeight(); y++) {
 			for (int x = 0; x < xGradient.getWidth(); x++) {
 				im.set(x, y, 0);
 				double currentMagnitude = magnitudes.get(x, y);
 
+				if (currentMagnitude == 0) {
+					continue;
+				}
+
 				// angle is in the range [-pi, pi].
 				double angleRadians = atan2(yGradient.get(x, y), xGradient.get(x, y));
-				double angleDegrees = angleRadians / (3.1415926535897932) / 2 * 360;
+				double angleDegrees = angleRadians / 3.1415926535897932 * 180;
+				int nearestFortyFive = (int)(round(angleDegrees / 45) * 45);
 
 				// Find the amount to go in the X and Y directions to follow the gradient
 
 				int dx = 0, dy = 0;
-				if (angleDegrees > 22.5 && angleDegrees < (180 - 22.5)) {
-					dy = 1;
-				} else if (angleDegrees < -22.5 && angleDegrees > (-180 + 22.5)) {
-					dy = -1;
-				}
-
-				{
-					double absDegrees = abs(angleDegrees);
-					if (absDegrees > (90 + 22.5)) {
-						dx = -1;
-					} else if (absDegrees < (90 - 22.5)) {
+				switch (nearestFortyFive) {
+					// Exact opposites are equivalent
+					case 45:
+					case -135:
 						dx = 1;
-					}
+						dy = 1;
+						break;
+					case -45:
+					case 135:
+						dx = 1;
+						dy = -1;
+					case -90:
+					case 90:
+						dx = 0;
+						dy = 1;
+						break;
+					case 0:
+					case 180:
+					case -180:
+						dx = 1;
+						dy = 0;
+						break;
 				}
-				
-				// std::cout << angleDegrees << ": " << dx << ", " << dy << '\n';
 
 				if (inBounds(x + dx, y + dy, width, height)) {
-					if (currentMagnitude > magnitudes.get(x + dx, y + dy)) {
+					if (currentMagnitude >= magnitudes.get(x + dx, y + dy)) {
 						if (inBounds(x - dx, y - dy, width, height)) {
-							if (currentMagnitude > magnitudes.get(x - dx, y - dy)) {
+							if (currentMagnitude >= magnitudes.get(x - dx, y - dy)) {
 								im.set(x, y, 1);
 							}
 						}
@@ -760,17 +775,20 @@ namespace lab5 {
 	 * @param lowerThreshold The lower threshold to use for hysteresis (Weak edge)
 	 * @param upperThreshold The upper threshold to use for hysteresis (Strong edge)
 	 */
-	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, int lowerThreshold, int upperThreshold) {
-		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(10, 3);
-		GrayscaleImage xGradient = afterGaussian.convolve(horizontalSobel);
-		GrayscaleImage yGradient = afterGaussian.convolve(verticalSobel);
+	EdgeDetectionResult detectEdges(GrayscaleImage grayscale, double lowerThreshold, double upperThreshold) {
+		int gaussianFilterRadius = 3;
+
+		GrayscaleImage afterGaussian = grayscale.applyGaussianFilter(2 * gaussianFilterRadius + 1, 3);
+		afterGaussian.save("imageg.ppm");
+		GrayscaleImage xGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_HORIZONTAL);
+		GrayscaleImage yGradient = afterGaussian.applySobel(9, tjcv::SOBEL_TYPE_VERTICAL);
 		
 		GrayscaleImage magnitudes = combineSobel(xGradient, yGradient);
 
-		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold);
+		GrayscaleImage afterHysteresis = hysteresis(magnitudes, lowerThreshold, upperThreshold, gaussianFilterRadius);
 		GrayscaleImage afterNonMaxSuppression = nonMaxSuppression(xGradient, yGradient, magnitudes);
-		// afterHysteresis.save("imageh.ppm");
-		// afterNonMaxSuppression.save("imagenms.ppm");
+		afterHysteresis.save("imageh.ppm");
+		afterNonMaxSuppression.save("imagenms.ppm");
 
 		return EdgeDetectionResult {
 			combineImages(afterHysteresis, afterNonMaxSuppression),
@@ -841,7 +859,6 @@ namespace lab6 {
 	std::set<std::pair<int, int>> findLocalMaximaWithSlidingSquare(GrayscaleImage values, int squareSize) {
 		std::set<std::pair<int, int>> localMaxima;
 	
-
 		/*
 		This caches the maximum value of each row of the current square.
 		When the square moves down, the next value replaces the value one squareWidth
@@ -976,7 +993,7 @@ namespace lab6 {
 
 			double angleMatch = _safeAbs(cos(theta));
 
-			if (angleMatch < 0.8) continue;
+			if (angleMatch < 0.5) continue;
 
 			// Magnitude
 			int magnitude = magnitudes.get(pixelX, pixelY);
@@ -994,8 +1011,6 @@ namespace lab6 {
 
 		return score;
 	}
-
-	
 
 	/**
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minScore specifies the minimum ratio of empty edges to fillled edges.
@@ -1044,7 +1059,6 @@ namespace lab6 {
 		}
 		return radii;
 	}
-
 
 	/**
 	 * When there are several circles in roughly the same area, we use deduplication.
@@ -1137,6 +1151,8 @@ namespace lab6 {
 				maximumRadius = circle.radius.radius;
 			}
 		}
+
+		return MoneyCountingResult { 0, 0, 0, 0 };
 	}
 
 	void part2() {
@@ -1146,18 +1162,18 @@ namespace lab6 {
 		auto colorImage = ColorImage::fromPPM("image.ppm");
 		auto grayscaleImage = colorImage.toGrayscale();
 
-		const int EDGE_LOWER_THRESHOLD = 20;
-		const int EDGE_UPPER_THRESHOLD = 90;
+		const double EDGE_LOWER_THRESHOLD = 0.2;
+		const double EDGE_UPPER_THRESHOLD = 0.4;
 		
-		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 25;
-		const int CENTER_DEDUPE_SQUARE_SIZE = 25;
+		const int CENTER_LOCAL_MAXIMUM_SQUARE_SIZE = 100;
+		// const int CENTER_DEDUPE_SQUARE_SIZE = 25;
 		const int CIRCLE_DEDUPE_SQUARE_SIZE = 15;
-		const int CENTER_VOTES_THRESHOLD = 15;
+		const int CENTER_VOTES_THRESHOLD = 7;
 		
-		const int MIN_RADIUS = 60;
-		const int MAX_RADIUS = 200;
+		const int MIN_RADIUS = 8;
+		const int MAX_RADIUS = 40;
 		const int VOTE_LENGTH = MAX_RADIUS;
-		const double SCORE_THRESHOLD = 0.4;
+		const double SCORE_THRESHOLD = 0.02;
 		const int RING_WIDTH = 3;
 
 		dbg("Detecting edges\n");
@@ -1165,17 +1181,15 @@ namespace lab6 {
 		detection.edges.save("imagef.ppm");
 		detection.magnitudes.save("imagemagnitudes.ppm");
 
-		return;
-
 		dbg("Casting votes\n");
 		auto votes = lab6::castVotes(detection.edges, detection.angles, VOTE_LENGTH);
-		votes = votes.applyGaussianFilter(5, 3);
+		votes = votes.applyGaussianFilter(9, 3);
 		votes.setMax(votes.getAbsoluteMax());
 		votes.save("imagev.ppm");
 
 		dbg("Finding centers\n");
 		auto centers = lab6::findCenters(votes, CENTER_LOCAL_MAXIMUM_SQUARE_SIZE, CENTER_VOTES_THRESHOLD);
-		centers = dedupeCenters(centers, CENTER_DEDUPE_SQUARE_SIZE, CENTER_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
+		// centers = dedupeCenters(centers, CENTER_DEDUPE_SQUARE_SIZE, CENTER_DEDUPE_SQUARE_SIZE, colorImage.getWidth(), colorImage.getHeight());
 
 		dbg("Found " << centers.size() << " centers\n");
 
