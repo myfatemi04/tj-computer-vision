@@ -374,7 +374,7 @@ namespace tjcv {
 				if (i == 0 && j == 0) {
 					kernel[i + k][j + k] = 0;
 				} else {
-					kernel[i + k][j + k] = (type == SOBEL_TYPE_HORIZONTAL ? j : i) / (i * i + j * j);
+					kernel[i + k][j + k] = (type == SOBEL_TYPE_HORIZONTAL ? i : j) / (i * i + j * j);
 				}
 			}
 		}
@@ -657,8 +657,8 @@ namespace lab5 {
 
 		GrayscaleImage im(width, height, 1);
 
-		for (int y = 0; y < xGradient.getHeight(); y++) {
-			for (int x = 0; x < xGradient.getWidth(); x++) {
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
 				im.set(x, y, 0);
 				double currentMagnitude = magnitudes.get(x, y);
 
@@ -698,15 +698,10 @@ namespace lab5 {
 						break;
 				}
 
-				if (inBounds(x + dx, y + dy, width, height)) {
-					if (currentMagnitude >= magnitudes.get(x + dx, y + dy)) {
-						if (inBounds(x - dx, y - dy, width, height)) {
-							if (currentMagnitude >= magnitudes.get(x - dx, y - dy)) {
-								im.set(x, y, 1);
-							}
-						}
-					}
-				}
+				int nextMagnitude = magnitudes.get(x + dx, y + dy);
+				int prevMagnitude = magnitudes.get(x - dx, y - dy);
+
+				im.set(x, y, (currentMagnitude >= nextMagnitude) && (currentMagnitude >= prevMagnitude));
 			}
 		}
 		
