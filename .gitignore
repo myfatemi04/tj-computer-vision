@@ -9,3 +9,5 @@ Labs/Lab 3 Points.txt Files/*
 Labs/results.txt
 Labs/points.txt
 *.png
+OpenCV/CMakeFiles
+OpenCV/build
