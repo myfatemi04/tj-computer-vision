@@ -17,6 +17,25 @@ double absoluteError(double a, double b) {
 		return _safeAbs(a - b);
 	}
 
+std::string formatMoney(int cents) {
+	int dollarCount = cents / 100;
+	int centCount = cents % 100;
+
+	std::stringstream ss;
+	ss << '$' << dollarCount << '.' << (centCount < 10 ? "0" : "") << centCount;
+	
+	return ss.str();
+}
+
+void writeResults(std::ostream& out, const int* quantities, int cents) {
+	out << "Result:\n";
+	out << quantities[coins::COIN_TYPE_PENNY] << " pennies\n";
+	out << quantities[coins::COIN_TYPE_NICKEL] << " nickels\n";
+	out << quantities[coins::COIN_TYPE_DIME] << " dimes\n";
+	out << quantities[coins::COIN_TYPE_QUARTER] << " quarters\n";
+	out << quantities[coins::COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
+	out << "For a grand total of " << formatMoney(cents) << "!\n";
+}
 
 namespace coins {
 	enum CoinType {
@@ -238,22 +257,12 @@ int main(int argc, char** argv) {
 	int centCount = totalValueInCents % 100;
 
 	std::ofstream results("results.txt");
+	
+	writeResults(results, coinCountsByType, totalValueInCents);
 
-	results << "Result:\n";
-	results << coinCountsByType[coins::COIN_TYPE_PENNY] << " pennies\n";
-	results << coinCountsByType[coins::COIN_TYPE_NICKEL] << " nickels\n";
-	results << coinCountsByType[coins::COIN_TYPE_DIME] << " dimes\n";
-	results << coinCountsByType[coins::COIN_TYPE_QUARTER] << " quarters\n";
-	results << coinCountsByType[coins::COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
-	results << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
-
-	std::cout << "Result:\n";
-	std::cout << coinCountsByType[coins::COIN_TYPE_PENNY] << " pennies\n";
-	std::cout << coinCountsByType[coins::COIN_TYPE_NICKEL] << " nickels\n";
-	std::cout << coinCountsByType[coins::COIN_TYPE_DIME] << " dimes\n";
-	std::cout << coinCountsByType[coins::COIN_TYPE_QUARTER] << " quarters\n";
-	std::cout << coinCountsByType[coins::COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
-	std::cout << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
+	results.close();
+	
+	writeResults(std::cout, coinCountsByType, totalValueInCents);
 
 	return 0;
 }
