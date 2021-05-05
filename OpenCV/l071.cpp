@@ -108,14 +108,15 @@ namespace coins {
 			int radius = circle[2];
 			auto center = cv::Point(x, y);
 
-			std::vector<cv::Point> circlePoints;
-
-			cv::ellipse2Poly(center, cv::Size(radius / 2, radius / 2), 0, 0, 360, 1, circlePoints);
+			// cv: Get points of ellipse centered at (center) with axes (radius/2, radius/2) [and resolution 1]
+			std::vector<cv::Point> points;
+			cv::ellipse2Poly(center, cv::Size(radius / 2, radius / 2), 0, 0, 360, 1, points);
 
 			int redPixelCount = 0;
-			int totalPixelCount = circlePoints.size();
-			for (const auto& location : circlePoints) {
-				auto color = reference.at<cv::Vec3b>(location);
+			int totalPixelCount = points.size();
+			// for each (location) of (points)
+			for (const auto& point : points) {
+				auto color = reference.at<cv::Vec3b>(point);
 				// [blue, green, red] = color
 				int blue = color[0];
 				int green = color[1];
@@ -132,8 +133,11 @@ namespace coins {
 		}
 		
 		if (pennyCount == 0) {
+			// Assume the smallest coin is a dime, and extrapolate the penny
+			// radius from there.
 			return findPennyRadiusDimeRadiusFallback(circles);
 		} else {
+			// Return the average radius of the found pennies
 			return pennyRadiiCumulativeTotal / pennyCount;
 		}
 	}
@@ -183,23 +187,20 @@ int main(int argc, char** argv) {
 	const int GAUSSIAN_KERNEL_SIZE = 3;
 	
 	// cv: Blur (gray) with a kernel of size (GAUSSIAN_KERNEL_SIZE, GAUSSIAN_KERNEL_SIZE) [and std dev of (3, 3)] [using border (:default)]
-	cv::GaussianBlur(
+	cv::medianBlur(
 		gray, // input
 		gray, // output
-		cv::Size(GAUSSIAN_KERNEL_SIZE, GAUSSIAN_KERNEL_SIZE), // kernel size
-		3, // sigma X
-		3, // sigma Y
-		cv::BORDER_DEFAULT // border style
+		5
 	);
 
 	const int MIN_RADIUS = 75;
-	const int MAX_RADIUS = 150;
+	const int MAX_RADIUS = 175;
 	const int MIN_DISTANCE = MIN_RADIUS;
 
 	const int MAX_POSSIBLE_EDGE_GRADIENT = 1016;
 
-	const int EDGE_DETECTION_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.525 / GAUSSIAN_KERNEL_SIZE;
-	const int ACCUMULATOR_THRESHOLD = 50;
+	const int EDGE_DETECTION_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.55 / GAUSSIAN_KERNEL_SIZE;
+	const int ACCUMULATOR_THRESHOLD = 100;
 
 	const double ACCUMULATOR_BLOCKINESS = 1.5;
 	
@@ -251,12 +252,8 @@ int main(int argc, char** argv) {
 
 	cv::imwrite("imagec.jpg", image);
 
-	cv::waitKey(0);
-
 	std::ofstream results("results.txt");
-	
 	writeResults(results, coinCountsByType, totalValueInCents);
-
 	results.close();
 	
 	writeResults(std::cout, coinCountsByType, totalValueInCents);
