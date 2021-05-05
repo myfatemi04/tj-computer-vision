@@ -48,12 +48,12 @@ namespace coins {
 	};
 
 	const int COIN_COLORS[6][3] = {
-		{ 255, 0, 0 },   // penny: red
-		{ 255, 0, 255 }, // nickel: purple
-		{ 0, 0, 255 },   // dime: blue
-		{ 0, 255, 0 },   // quarter: green
-		{ 0, 0, 0 },     // half dollar: unknown
-		{ 255, 255, 0 }  // silver dollar: yellow
+		{ 255,   0,   0 }, // penny: red
+		{ 255,   0, 255 }, // nickel: purple
+		{   0,   0, 255 }, // dime: blue
+		{   0, 255,   0 }, // quarter: green
+		{   0,   0,   0 }, // half dollar: unknown
+		{ 255, 255,   0 }  // silver dollar: yellow
 	};
 
 	const int COIN_VALUES[6] = {
@@ -110,7 +110,7 @@ namespace coins {
 
 			std::vector<cv::Point> circlePoints;
 
-			cv::ellipse2Poly(center, cv::Size(radius, radius), 0, 0, 360, 1, circlePoints);
+			cv::ellipse2Poly(center, cv::Size(radius / 2, radius / 2), 0, 0, 360, 1, circlePoints);
 
 			int redPixelCount = 0;
 			int totalPixelCount = circlePoints.size();
@@ -121,7 +121,7 @@ namespace coins {
 				int green = color[1];
 				int red = color[2];
 				double averageColor = (blue + green + red) / 3.0;
-				if (red > (averageColor * 1.2)) {
+				if (red > (averageColor * 1.3)) {
 					redPixelCount++;
 				}
 			}
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
 	cv::Mat gray;
 	cv::cvtColor(image, gray, cv::COLOR_BGR2GRAY);
 
-	const int GAUSSIAN_KERNEL_SIZE = 5;
+	const int GAUSSIAN_KERNEL_SIZE = 3;
 	
 	// cv: Blur (gray) with a kernel of size (GAUSSIAN_KERNEL_SIZE, GAUSSIAN_KERNEL_SIZE) [and std dev of (3, 3)] [using border (:default)]
 	cv::GaussianBlur(
@@ -198,8 +198,8 @@ int main(int argc, char** argv) {
 
 	const int MAX_POSSIBLE_EDGE_GRADIENT = 1016;
 
-	const int EDGE_DETECTION_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.77 / GAUSSIAN_KERNEL_SIZE;
-	const int ACCUMULATOR_THRESHOLD = 40;
+	const int EDGE_DETECTION_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.5 / GAUSSIAN_KERNEL_SIZE;
+	const int ACCUMULATOR_THRESHOLD = 50;
 
 	const double ACCUMULATOR_BLOCKINESS = 1.5;
 	

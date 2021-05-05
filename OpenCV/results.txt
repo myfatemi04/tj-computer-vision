@@ -1,7 +1,7 @@
 Result:
-39 pennies
+37 pennies
 5 nickels
-4 dimes
-20 quarters
+7 dimes
+19 quarters
 0 silver dollars
-For a grand total of $6.04!
+For a grand total of $6.07!
