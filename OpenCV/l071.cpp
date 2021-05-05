@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
 	cv::medianBlur(
 		gray, // input
 		gray, // output
-		5
+		9
 	);
 
 	const int MIN_RADIUS = 75;
@@ -200,9 +200,9 @@ int main(int argc, char** argv) {
 	const int MAX_POSSIBLE_EDGE_GRADIENT = 1016;
 
 	const int EDGE_DETECTION_THRESHOLD = MAX_POSSIBLE_EDGE_GRADIENT * 0.55 / GAUSSIAN_KERNEL_SIZE;
-	const int ACCUMULATOR_THRESHOLD = 100;
+	const int ACCUMULATOR_THRESHOLD = 30;
 
-	const double ACCUMULATOR_BLOCKINESS = 1.5;
+	const double ACCUMULATOR_BLOCKINESS = 1;
 	
 	// cv: Detect edges in (gray) with thresholds (EDGE_DETECTION_THRESHOLD/2, EDGE_DETECTION_THRESHOLD)
 	// Replicate the same style of edge detection used by Hough Circles
