@@ -1,2 +1,2 @@
 #!/bin/bash
-g++ l071.cpp -o l071 `pkg-config --cflags --libs opencv4`
+g++ l071.cpp -o l071 -Wall `pkg-config --cflags --libs opencv4`

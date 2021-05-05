@@ -1,0 +1,44 @@
+import "opencv2" as cv;
+
+Enum: Image Type {
+	color
+}
+
+Enum: Color Type {
+	BGR to Grayscale
+}
+
+main [with args (args)] -> int {
+	if (args: Length != 2) {
+		Log "usage: l071 <path>";
+		Log "path: the source image for detecting coins";
+
+		return -1;
+	}
+
+	Log `Reading image from ${args: 1}`;
+
+	image = cv: Read (:color) image from (args: 1);
+
+	if image: Empty {
+		Log "No image data";
+
+		return -1;
+	}
+
+	gray = cv: Convert (image) to (:BGR to Grayscale);
+	gray = cv: Apply Median Blur to (gray);
+
+	circles = cv: Detect circles in (gray) at least (30) apart with a radius from (50) to (300);
+
+	for each ([x, y, radius]) of (circles) {
+		center = cv: Point at (x, y);
+
+		cv: Draw circle on (image) at (center) with radius 1 in the color (0, 100, 100) 3 pixels thick;
+		cv: Draw circle on (image) at (center) with radius (radius) in the color (255, 0, 255) 3 pixels thick;
+	}
+
+	cv: Save (image) to "imagec.jpg"
+	
+	return 0
+}
