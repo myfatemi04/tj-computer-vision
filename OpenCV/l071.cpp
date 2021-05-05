@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
@@ -17,7 +18,7 @@ double absoluteError(double a, double b) {
 	}
 
 
-namespace coinestimation {
+namespace coins {
 	enum CoinType {
 		COIN_TYPE_PENNY = 0,
 		COIN_TYPE_NICKEL = 1,
@@ -54,6 +55,10 @@ namespace coinestimation {
 		{ 0, 255, 0 },   // quarter: green
 		{ 0, 0, 0 },     // half dollar: unknown
 		{ 255, 255, 0 }  // silver dollar: yellow
+	};
+
+	const int COIN_VALUES[6] = {
+		1, 5, 10, 25, 50, 100
 	};
 
 	CoinType estimateCoinType(double unknownCoinRadius, double pennyRadius) {
@@ -135,7 +140,6 @@ namespace coinestimation {
 	}
 }
 
-
 int main(int argc, char** argv) {
 	if (argc != 2) {
 		std::cout << "usage: l071 <path>\n";
@@ -201,7 +205,10 @@ int main(int argc, char** argv) {
 		MAX_RADIUS  // maximum radius
 	);
 
-	double estimatedPennyRadius = coinestimation::findPennyRadius(circles, image);
+	double estimatedPennyRadius = coins::findPennyRadius(circles, image);
+
+	int totalValueInCents = 0;
+	int coinCountsByType[6] = {0, 0, 0, 0, 0, 0};
 
 	// for each (circle) of (circles)
 	for (const auto& circle : circles) {
@@ -211,18 +218,42 @@ int main(int argc, char** argv) {
 		int radius = circle[2];
 		auto center = cv::Point(x, y);
 
-		auto type = coinestimation::estimateCoinType(radius, estimatedPennyRadius);
-		auto color = coinestimation::COIN_COLORS[type];
+		auto type = coins::estimateCoinType(radius, estimatedPennyRadius);
+		auto color = coins::COIN_COLORS[type];
 		// cvcolor is in BGR, coin colors are supplied in RGB
 		// therefore, we make a mirror image
 		auto cvcolor = cv::Scalar(color[2], color[1], color[0]);
 		// cv: draw circle on (image) at (center) in color (cvcolor) [with thickness 3]
 		cv::circle(image, center, radius, cvcolor, 3, cv::LINE_AA);
+
+		totalValueInCents += coins::COIN_VALUES[type];
+		coinCountsByType[type]++;
 	}
 
 	cv::imwrite("imagec.jpg", image);
 
 	cv::waitKey(0);
+
+	int dollarCount = totalValueInCents / 100;
+	int centCount = totalValueInCents % 100;
+
+	std::ofstream results("results.txt");
+
+	results << "Result:\n";
+	results << coinCountsByType[coins::COIN_TYPE_PENNY] << " pennies\n";
+	results << coinCountsByType[coins::COIN_TYPE_NICKEL] << " nickels\n";
+	results << coinCountsByType[coins::COIN_TYPE_DIME] << " dimes\n";
+	results << coinCountsByType[coins::COIN_TYPE_QUARTER] << " quarters\n";
+	results << coinCountsByType[coins::COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
+	results << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
+
+	std::cout << "Result:\n";
+	std::cout << coinCountsByType[coins::COIN_TYPE_PENNY] << " pennies\n";
+	std::cout << coinCountsByType[coins::COIN_TYPE_NICKEL] << " nickels\n";
+	std::cout << coinCountsByType[coins::COIN_TYPE_DIME] << " dimes\n";
+	std::cout << coinCountsByType[coins::COIN_TYPE_QUARTER] << " quarters\n";
+	std::cout << coinCountsByType[coins::COIN_TYPE_SILVER_DOLLAR] << " silver dollars\n";
+	std::cout << "For a grand total of $" << dollarCount << "." << (centCount < 10 ? "0" : "") << centCount << "!\n";
 
 	return 0;
 }
