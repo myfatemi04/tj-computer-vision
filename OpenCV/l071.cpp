@@ -209,7 +209,7 @@ int main(int argc, char** argv) {
 	cv::Mat edges;
 	cv::Canny(gray, edges, EDGE_DETECTION_THRESHOLD / 2, EDGE_DETECTION_THRESHOLD);
 
-	cv::imwrite("edges.jpg", edges);
+	// cv::imwrite("edges.jpg", edges);
 
 	// cv: Detect circles in [gray] at least [MIN_DISTANCE] apart with a radius from [MIN_RADIUS] to [MAX_RADIUS] and output them to [circles]
   std::vector<cv::Vec3f> circles;
@@ -239,7 +239,8 @@ int main(int argc, char** argv) {
 		auto center = cv::Point(x, y);
 
 		auto type = coins::estimateCoinType(radius, estimatedPennyRadius);
-		auto color = coins::COIN_COLORS[type];
+		// the specifications say to just use red for the circle color
+		auto color = coins::COIN_COLORS[coins::COIN_TYPE_PENNY]; // coins::COIN_COLORS[type];
 		// cvcolor is in BGR, coin colors are supplied in RGB
 		// therefore, we make a mirror image
 		auto cvcolor = cv::Scalar(color[2], color[1], color[0]);
