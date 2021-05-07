@@ -32,6 +32,13 @@ typedef struct {
 	double projectionPlaneDistance;
 } Camera3;
 
+typedef int VertexID;
+
+typedef struct {
+	VertexID a;
+	VertexID b;
+} Edge;
+
 // Returns an array of eight vertices.
 Location3 *getVerticesOfCube(const Cube& cube) {
 	return nullptr;
@@ -87,9 +94,46 @@ Location2 getProjectedLocation(const Location3& point, const Camera3& camera) {
 	return projectedLocation;
 }
 
-void renderCube(const cv::Mat& out, const Cube& cube) {
+void renderCube(const cv::Mat& out, const Camera3& camera, const Cube& cube) {
 	auto vertices = getVerticesOfCube(cube);
-	
+	auto edges = new Edge[12] {
+		{0, 1},
+		{1, 2},
+		{2, 3},
+		{3, 0},
+
+		{4, 5},
+		{5, 6},
+		{6, 7},
+		{7, 4},
+
+		{0, 4},
+		{1, 5},
+		{2, 6},
+		{3, 7}
+	};
+
+	auto projectedVertices = new Location2[8] {
+		getProjectedLocation(vertices[0], camera),
+		getProjectedLocation(vertices[1], camera),
+		getProjectedLocation(vertices[2], camera),
+		getProjectedLocation(vertices[3], camera),
+		getProjectedLocation(vertices[4], camera),
+		getProjectedLocation(vertices[5], camera),
+		getProjectedLocation(vertices[6], camera),
+		getProjectedLocation(vertices[7], camera),
+	};
+
+	for (int i = 0; i < 12; i++) {
+		auto edge = edges[i];
+		auto firstVertexID = edge.a;
+		auto secondVertexID = edge.b;
+
+		auto firstVertexProjectedLocation = projectedVertices[firstVertexID];
+		auto secondVertexProjectedLocation = projectedVertices[secondVertexID];
+
+		// Draw line from first vertex to second vertex
+	}
 }
 
 int main() {
