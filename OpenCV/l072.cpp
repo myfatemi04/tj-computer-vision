@@ -32,7 +32,7 @@ typedef struct {
 	double projectionPlaneDistance;
 } Camera3;
 
-// TODO implement
+// Returns an array of eight vertices.
 Location3 *getVerticesOfCube(const Cube& cube) {
 	return nullptr;
 }
@@ -70,10 +70,26 @@ Location3 getVectorFromPerspective(const Location3& point, const Position3& pers
 	return rotatedRelativeVector;
 }
 
+Location2 getProjectedLocation(const Location3& point, const Camera3& camera) {
+	// Get the vector from the camera to the point we want to project
+	auto vectorFromPerspective = getVectorFromPerspective(point, camera.position);
+	// Take the X and Z values as U and V.
+	// We simply multiply the distance to the projection plane by the X and Y
+	// components of the relative vector. We can ignore the Z component.
+	auto projectionPlaneDistance = camera.projectionPlaneDistance;
+	auto u = vectorFromPerspective.x * projectionPlaneDistance;
+	auto v = vectorFromPerspective.y * projectionPlaneDistance;
+	
+	Location2 projectedLocation {
+		u, v
+	};
 
+	return projectedLocation;
+}
 
 void renderCube(const cv::Mat& out, const Cube& cube) {
-
+	auto vertices = getVerticesOfCube(cube);
+	
 }
 
 int main() {
