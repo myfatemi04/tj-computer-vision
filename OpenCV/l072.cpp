@@ -8,6 +8,15 @@ typedef struct {
 	cv::Point toPoint() const {
 		return cv::Point(x, y);
 	}
+
+	cv::Point toCenteredPoint(const cv::MatSize& size) const {
+		int width = size[1];
+		int height = size[0];
+		int centerX = width / 2;
+		int centerY = height / 2;
+		int projectionToImageScalar = (height / 4);
+		return cv::Point((x * projectionToImageScalar) + centerX, (y * projectionToImageScalar) + centerY);
+	}
 } Location2;
 
 typedef double Orientation2;
@@ -125,14 +134,14 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 	auto vertices = getVerticesOfCube(cube);
 	auto edges = new Edge[12] {
 		{0, 1},
-		{1, 2},
-		{2, 3},
-		{3, 0},
+		{1, 3},
+		{3, 2},
+		{2, 1},
 
 		{4, 5},
-		{5, 6},
-		{6, 7},
-		{7, 4},
+		{5, 7},
+		{7, 6},
+		{6, 4},
 
 		{0, 4},
 		{1, 5},
@@ -161,13 +170,16 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 		auto firstVertexProjectedLocation = projectedVertices[firstVertexID];
 		auto secondVertexProjectedLocation = projectedVertices[secondVertexID];
 
+		auto firstVertexCentered = firstVertexProjectedLocation.toCenteredPoint(out.size);
+		auto secondVertexCentered = secondVertexProjectedLocation.toCenteredPoint(out.size);
+
 		// Draw line from first vertex to second vertex
-		cv::line(out, firstVertexProjectedLocation.toPoint(), secondVertexProjectedLocation.toPoint(), white);
+		cv::line(out, firstVertexCentered, secondVertexCentered, white);
 	}
 }
 
 int main() {
-	const int IMAGE_WIDTH = 800;
+	const int IMAGE_WIDTH = 1200;
 	const int IMAGE_HEIGHT = 800;
 	auto image = cv::Mat(cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT), CV_8UC1);
 	auto cube = Cube { Position3 { Location3 { 0, 0, 0 } }, 1 };
@@ -176,4 +188,6 @@ int main() {
 	std::cout << "Rendering cube\n";
 
 	renderCube(image, camera, cube);
+
+	cv::imwrite("cube.png", image);
 }
