@@ -61,10 +61,10 @@ Location3 *getVerticesOfCube(const Cube& cube) {
 
 	auto locations = new Location3[8];
 	for (int i = 0; i < 8; i++) {
-		// Points are ordered by ZYX in bits
-		int x = i & 1;
-		int y = i & 2;
-		int z = i & 4;
+		// Points are ordered by YZX in bits
+		int x = (i >> 0) & 1;
+		int z = (i >> 1) & 1;
+		int y = (i >> 2) & 1;
 
 		locations[i] = Location3 {
 			(x * cube.sideLength) - scaleFactor,
@@ -102,6 +102,10 @@ Location3 getVectorFromPerspective(const Location3& point, const Position3& pers
 	std::cout << "Getting vector from location to point\n";
 	// Get the vector from the viewer to the point
 	auto relativeVector = getVectorFromAToB(perspective.location, point);
+
+	std::cout << "Relative vector: ";
+	std::cout << "<" << relativeVector.x << ", " << relativeVector.y << ", " << relativeVector.z << ">";
+	std::cout << '\n';
 	
 	std::cout << "Rotating vector around Z\n";
 	// Then, rotate it by the viewer's rotation
@@ -112,19 +116,26 @@ Location3 getVectorFromPerspective(const Location3& point, const Position3& pers
 }
 
 Location2 getProjectedLocation(const Location3& point, const Camera3& camera) {
-	std::cout << "Getting projected location\n";
 	// Get the vector from the camera to the point we want to project
 	auto vectorFromPerspective = getVectorFromPerspective(point, camera.position);
 	// Take the X and Z values as U and V.
 	// We simply multiply the distance to the projection plane by the X and Y
-	// components of the relative vector. We can ignore the Z component.
+	// components of the relative vector, scaled so that Z = -1.
+	auto vectorFromPerspectiveScaled = Location2 {
+			vectorFromPerspective.x / vectorFromPerspective.z,
+			vectorFromPerspective.y / vectorFromPerspective.z
+	};
 	auto projectionPlaneDistance = camera.projectionPlaneDistance;
-	auto u = vectorFromPerspective.x * projectionPlaneDistance;
-	auto v = vectorFromPerspective.y * projectionPlaneDistance;
+	auto u = vectorFromPerspectiveScaled.x * projectionPlaneDistance;
+	auto v = vectorFromPerspectiveScaled.y * projectionPlaneDistance;
 	
 	Location2 projectedLocation {
 		u, v
 	};
+
+	std::cout << "Projected location for ";
+	std::cout << "(" << point.x << ", " << point.y << ", " << point.z << ")";
+	std::cout << " is at (" << u << ", " << v << ")\n";
 
 	return projectedLocation;
 }
@@ -136,7 +147,7 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 		{0, 1},
 		{1, 3},
 		{3, 2},
-		{2, 1},
+		{2, 0},
 
 		{4, 5},
 		{5, 7},
@@ -182,8 +193,8 @@ int main() {
 	const int IMAGE_WIDTH = 1200;
 	const int IMAGE_HEIGHT = 800;
 	auto image = cv::Mat(cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT), CV_8UC1);
-	auto cube = Cube { Position3 { Location3 { 0, 0, 0 } }, 1 };
-	auto camera = Camera3 { Position3 { Location3 { 0, 0, 0 } }, 4 };
+	auto cube = Cube { Position3 { Location3 { 0, 0, 0 }, 0 }, 1 };
+	auto camera = Camera3 { Position3 { Location3 { 0, 0, -1 }, 0 }, 1 };
 
 	std::cout << "Rendering cube\n";
 
