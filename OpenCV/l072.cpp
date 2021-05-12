@@ -21,6 +21,12 @@ class Location2 {
 			return Location2 { x * amount, y * amount };
 		}
 
+		std::string toPointString() const {
+			std::stringstream s;
+			s << '(' << x << ", " << y << ')';
+			return s.str();
+		}
+
 		cv::Point toPoint() const {
 			return cv::Point(x, y);
 		}
@@ -129,9 +135,9 @@ class Cube {
 
 			auto locations = new Location3[8];
 			for (int i = 0; i < 8; i++) {
-				// Points are ordered by ZYX in bits
-				int x = (i >> 2) & 1;
-				int y = (i >> 1) & 1;
+				// Points are ordered by YXZ in bits
+				int y = (i >> 2) & 1;
+				int x = (i >> 1) & 1;
 				int z = (i >> 0) & 1;
 
 				auto vertex = Location3 {
@@ -182,20 +188,20 @@ Location3 getVectorFromPerspective(const Location3& point, const Position3& pers
 Location2 getProjectedLocation(const Location3& point, const Camera3& camera) {
 	// Get the vector from the camera to the point we want to project
 	auto vectorFromPerspective = getVectorFromPerspective(point, camera.position);
-	// Take the X and Z values as U and V.
-	// We simply multiply the distance to the projection plane by the X and Y
-	// components of the relative vector, scaled so that Z = -1.
+	// Take the Y and Z values as U and V.
+	// We simply multiply the distance to the projection plane by the Y and Z
+	// components of the relative vector, scaled so that X = 1.
 	auto vectorFromPerspectiveScaled = Location2 {
-			vectorFromPerspective.getX(),
-			vectorFromPerspective.getY()
-	}.scale(1 / vectorFromPerspective.getZ());
+			vectorFromPerspective.getY(), // y is side to side
+			vectorFromPerspective.getZ()  // z is up and down
+	}.scale(1 / vectorFromPerspective.getX()); // x is out from the screen
 
 	auto projectionPlaneDistance = camera.projectionPlaneDistance;
 
 	auto projectedLocation = vectorFromPerspectiveScaled.scale(projectionPlaneDistance);
 
-	std::cout << "Projected location for " << point.toPointString();
-	std::cout << " is at (" << projectedLocation.getX() << ", " << projectedLocation.getY() << ")\n";
+	std::cout << "Projected location for " << point.toPointString() << " (perspective " << vectorFromPerspective.toVectorString() << ')';
+	std::cout << " is at " << projectedLocation.toPointString() << '\n';
 
 	return projectedLocation;
 }
@@ -254,7 +260,7 @@ int main() {
 	const int IMAGE_HEIGHT = 800;
 	auto image = cv::Mat(cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT), CV_8UC1);
 	auto cube = Cube(Position3 { Location3(0, 0, 0), 1 }, 1);
-	auto camera = Camera3 { Position3 { Location3 { 0, 0, -1 }, 0 }, 1 };
+	auto camera = Camera3 { Position3 { Location3 { -1, 0, 0 }, 0 }, 1 };
 
 	std::cout << "Rendering cube\n";
 
