@@ -2,6 +2,14 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#define SHOW_IMAGE_DEBUG_MESSAGES false
+
+#if SHOW_IMAGE_DEBUG_MESSAGES
+#  define idbg(x) std::cout << x
+#else
+#  define idbg(x)
+#endif
+
 class Location2 {
 	private:
 		double x, y;
@@ -129,6 +137,10 @@ class Cube {
 	public:
 		Cube(Position3 position, double sideLength): position(position), sideLength(sideLength) {}
 		
+		Position3 &getPosition() {
+			return position;
+		}
+
 		Location3 *getVertices() const {
 			double scaleFactor = sideLength / 2;
 			double rotation = position.orientation;
@@ -169,15 +181,9 @@ typedef struct {
 	VertexID b;
 } Edge;
 
-
 Location3 getVectorFromPerspective(const Location3& point, const Position3& perspective) {
-	std::cout << "Getting vector from location to point\n";
 	// Get the vector from the viewer to the point
 	auto relativeVector = perspective.location.vectorTo(point);
-
-	std::cout << "Relative vector: " << relativeVector.toVectorString() << '\n';
-	
-	std::cout << "Rotating vector around Z\n";
 	// Then, rotate it by the viewer's rotation
 	auto zRotation = perspective.orientation;
 	auto rotatedRelativeVector = relativeVector.rotatedAroundZ(-zRotation);
@@ -200,14 +206,13 @@ Location2 getProjectedLocation(const Location3& point, const Camera3& camera) {
 
 	auto projectedLocation = vectorFromPerspectiveScaled.scale(projectionPlaneDistance);
 
-	std::cout << "Projected location for " << point.toPointString() << " (perspective " << vectorFromPerspective.toVectorString() << ')';
-	std::cout << " is at " << projectedLocation.toPointString() << '\n';
+	idbg("Projected location for " << point.toPointString() << " (perspective " << vectorFromPerspective.toVectorString() << ')');
+	idbg(" is at " << projectedLocation.toPointString() << '\n');
 
 	return projectedLocation;
 }
 
 void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
-	std::cout << "Getting vertices of cube\n";
 	auto vertices = cube.getVertices();
 	auto edges = new Edge[12] {
 		{0, 1},
@@ -258,13 +263,29 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 int main() {
 	const int IMAGE_WIDTH = 1200;
 	const int IMAGE_HEIGHT = 800;
-	auto image = cv::Mat(cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT), CV_8UC1);
+
+	auto imageSize = cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT);
 	auto cube = Cube(Position3 { Location3(0, 0, 0), 1 }, 1);
 	auto camera = Camera3 { Position3 { Location3 { -1, 0, 0 }, 0 }, 1 };
 
-	std::cout << "Rendering cube\n";
+	cv::VideoWriter writer;
 
-	renderCube(image, camera, cube);
+	writer.open("cube.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, imageSize, true);
 
-	cv::imwrite("cube.png", image);
+	for (int i = 0; i < 30 * 10; i++) {
+		std::cout << "Rendering cube " << i << "\n";
+
+		auto image = cv::Mat(imageSize, CV_8UC1);
+		image = cv::Scalar(0);
+
+		renderCube(image, camera, cube);
+
+		cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
+
+		writer.write(image);
+
+		cube.getPosition().orientation = (i / (30 * 3.14159265));
+	}
+
+	writer.release();
 }
