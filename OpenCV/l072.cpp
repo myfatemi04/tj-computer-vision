@@ -78,8 +78,10 @@ class Location3 {
 		}
 
 		void rotateAroundZ(double radians) {
-			x = cos(radians) * x - sin(radians) * y;
-			y = sin(radians) * x + cos(radians) * y;
+			double _x = x;
+			double _y = y;
+			x = cos(radians) * _x - sin(radians) * _y;
+			y = sin(radians) * _x + cos(radians) * _y;
 		}
 
 		void translate(const Location3& amount) {
@@ -243,6 +245,7 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 	};
 
 	auto white = cv::Scalar(255, 255, 255);
+	auto red = cv::Scalar(255, 0, 0);
 
 	for (int i = 0; i < 12; i++) {
 		auto edge = edges[i];
@@ -256,7 +259,7 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 		auto secondVertexCentered = secondVertexProjectedLocation.toCenteredPoint(out.size);
 
 		// Draw line from first vertex to second vertex
-		cv::line(out, firstVertexCentered, secondVertexCentered, white);
+		cv::line(out, firstVertexCentered, secondVertexCentered, i == 0 ? red : white);
 	}
 }
 
@@ -266,21 +269,17 @@ int main() {
 
 	auto imageSize = cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT);
 	auto cube = Cube(Position3 { Location3(0, 0, 0), 1 }, 1);
-	auto camera = Camera3 { Position3 { Location3 { -1, 0, 0 }, 0 }, 1 };
+	auto camera = Camera3 { Position3 { Location3 { -5, 0, 0 }, 0 }, 3 };
+	auto image = cv::Mat(imageSize, CV_8UC3);
 
 	cv::VideoWriter writer;
 
 	writer.open("cube.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, imageSize, true);
 
-	for (int i = 0; i < 30 * 10; i++) {
-		std::cout << "Rendering cube " << i << "\n";
-
-		auto image = cv::Mat(imageSize, CV_8UC1);
-		image = cv::Scalar(0);
+	for (int i = 0; i < 30 * 3.14159265 * 8; i++) {
+		image = cv::Scalar(0, 0, 0);
 
 		renderCube(image, camera, cube);
-
-		cv::cvtColor(image, image, cv::COLOR_GRAY2BGR);
 
 		writer.write(image);
 
