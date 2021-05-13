@@ -11,3 +11,4 @@ Labs/points.txt
 *.png
 OpenCV/CMakeFiles
 OpenCV/build
+OpenCV/object
