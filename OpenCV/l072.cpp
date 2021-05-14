@@ -268,8 +268,11 @@ int main() {
 	const int IMAGE_HEIGHT = 800;
 
 	auto imageSize = cv::Size2i(IMAGE_WIDTH, IMAGE_HEIGHT);
-	auto cube = Cube(Position3 { Location3(0, 0, 0), 1 }, 1);
-	auto camera = Camera3 { Position3 { Location3 { -5, 0, 0 }, 0 }, 3 };
+
+	const double angle = 3.14159265 / 4;
+
+	auto cube = Cube(Position3 { Location3(1.414 * sin(angle), 1.414 * cos(angle), 0), 1 }, 1);
+	auto camera = Camera3 { Position3 { Location3 { 0, 0, 0 }, angle }, 0.5 };
 	auto image = cv::Mat(imageSize, CV_8UC3);
 
 	cv::VideoWriter writer;
@@ -283,7 +286,10 @@ int main() {
 
 		writer.write(image);
 
-		cube.getPosition().orientation = (i / (30 * 3.14159265));
+		double theta = (i / (30 * 3.14159265));
+
+		// cube.getPosition().location = Location3(3 * sin(theta / 2), 3 * cos(theta / 2), 0);
+		cube.getPosition().orientation = theta;
 	}
 
 	writer.release();
