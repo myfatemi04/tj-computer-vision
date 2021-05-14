@@ -183,6 +183,58 @@ typedef struct {
 	VertexID b;
 } Edge;
 
+// The order in which triangles should be rendered.
+enum TriangleOrderingResult {
+	// Triangle 'A' should be rendered before triangle 'B'
+	TRIANGLE_RENDER_BEFORE = 0,
+	// Triangle 'B' should be rendered before triangle 'A'
+	TRIANGLE_RENDER_AFTER = 1,
+};
+
+// Now, the question is:
+// How do we determine if one triangle covers another triangle?
+class Triangle {
+	private:
+		Location3 *a, *b, *c;
+
+	public:
+		Triangle(
+			Location3 *a,
+			Location3 *b,
+			Location3 *c
+		):
+			a(a), b(b), c(c)
+			{}
+
+		Location3 centroid() const {
+			auto x = (a->getX() + b->getX() + c->getX()) / 3;
+			auto y = (a->getY() + b->getY() + c->getY()) / 3;
+			auto z = (a->getZ() + b->getZ() + c->getZ()) / 3;
+			
+			return Location3(x, y, z);
+		}
+
+		// Compares this triangle with another triangle.
+		TriangleOrderingResult getRenderingOrder(
+			const Triangle& other,
+			const Position3& perspective
+		) const {
+			auto thisCentroid = this->centroid();
+			auto thatCentroid = other.centroid();
+
+			auto thisCentroidPerspective = getVectorFromPerspective(thisCentroid, perspective);
+			auto thatCentroidPerspective = getVectorFromPerspective(thatCentroid, perspective);
+
+			bool isCloser = thisCentroidPerspective.getX() < thatCentroidPerspective.getX();
+
+			if (isCloser) {
+				return TriangleOrderingResult::TRIANGLE_RENDER_BEFORE;
+			} else {
+				return TriangleOrderingResult::TRIANGLE_RENDER_AFTER;
+			}
+		}
+};
+
 Location3 getVectorFromPerspective(const Location3& point, const Position3& perspective) {
 	// Get the vector from the viewer to the point
 	auto relativeVector = perspective.location.vectorTo(point);
@@ -232,6 +284,41 @@ void renderCube(cv::Mat& out, const Camera3& camera, const Cube& cube) {
 		{2, 6},
 		{3, 7}
 	};
+
+	auto faces = new Triangle[12] {
+		// Bottom face
+		Triangle(&vertices[0], &vertices[1], &vertices[3]),
+		Triangle(&vertices[0], &vertices[2], &vertices[3]),
+
+		// Top face
+		Triangle(&vertices[4], &vertices[5], &vertices[7]),
+		Triangle(&vertices[4], &vertices[6], &vertices[7]),
+		
+		// Front face
+		Triangle(&vertices[6], &vertices[7], &vertices[3]),
+		Triangle(&vertices[6], &vertices[2], &vertices[3]),
+		
+		// Back face
+		Triangle(&vertices[4], &vertices[5], &vertices[1]),
+		Triangle(&vertices[4], &vertices[0], &vertices[1]),
+		
+		// Left face
+		Triangle(&vertices[4], &vertices[6], &vertices[2]),
+		Triangle(&vertices[4], &vertices[0], &vertices[2]),
+		
+		// Right face
+		Triangle(&vertices[7], &vertices[5], &vertices[1]),
+		Triangle(&vertices[7], &vertices[3], &vertices[1]),
+	};
+
+	std::sort(faces, faces + 12, [camera](const Triangle& a, const Triangle& b) -> bool {
+		auto renderingOrder = a.getRenderingOrder(b, camera.position);
+		if (renderingOrder == TriangleOrderingResult::TRIANGLE_RENDER_BEFORE) {
+			return true;
+		} else {
+			return false;
+		}
+	});
 
 	auto projectedVertices = new Location2[8] {
 		getProjectedLocation(vertices[0], camera),
