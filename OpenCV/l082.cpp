@@ -280,6 +280,11 @@ int main() {
 	const cv::Scalar red = cv::Scalar(255, 0, 0);
 	const std::vector<cv::Point2i> chessboardDestinationPoints { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
 
+	const int TOP_LEFT_INDEX = 16;
+	const int TOP_RIGHT_INDEX = 18;
+	const int BOTTOM_LEFT_INDEX = 30;
+	const int BOTTOM_RIGHT_INDEX = 32;
+
 	while (reader.read(frame)) {
 		if (!hasImageSize) {
 			auto fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
@@ -296,15 +301,20 @@ int main() {
 		}
 
 		bool completelyFound = cv::findChessboardCorners(frame, patternSize, chessboardCorners);
-
-		// if (chessboardCorners.size() > 0) {
-		// 	cv::drawChessboardCorners(frame, patternSize, chessboardCorners, completelyFound);
-		// }
 		if (completelyFound) {
-			for (const auto& corner : chessboardCorners) {
-				cv::circle(frame, corner, 10, red);
-			}
+			cv::circle(frame, chessboardCorners[TOP_LEFT_INDEX], 10, red);
+			cv::circle(frame, chessboardCorners[TOP_RIGHT_INDEX], 10, red);
+			cv::circle(frame, chessboardCorners[BOTTOM_LEFT_INDEX], 10, red);
+			cv::circle(frame, chessboardCorners[BOTTOM_RIGHT_INDEX], 10, red);
 		}
+
+		/*
+			The image is flipped according to the value of flipCode as follows:
+				flipcode = 0: flip vertically
+				flipcode > 0: flip horizontally
+				flipcode < 0: flip vertically and horizontally
+		*/
+		cv::flip(frame, frame, 0);
 
 		writer.write(frame);
 	}
