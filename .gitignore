@@ -13,3 +13,6 @@ OpenCV/CMakeFiles
 OpenCV/build
 OpenCV/object
 OpenCV/cube_jupyter.avi
+OpenCV/chessboard_updated.avi
+OpenCV/chessboard.mov
+OpenCV/chessboard.mp4
