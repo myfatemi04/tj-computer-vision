@@ -274,7 +274,7 @@ int main() {
 
 	cv::VideoWriter writer;
 
-	writer.open("cube.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, imageSize, true);
+	writer.open("rotation.avi", cv::VideoWriter::fourcc('M', 'J', 'P', 'G'), 30, imageSize, true);
 
 	for (int i = 0; i < 30 * 3.14159265 * 8; i++) {
 		image = cv::Scalar(0, 0, 0);
