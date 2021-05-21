@@ -278,7 +278,8 @@ int main() {
 	// *internal* corners of the chessboard
 	const cv::Size patternSize = cv::Size(7, 7);
 	const cv::Scalar red = cv::Scalar(255, 0, 0);
-	const std::vector<cv::Point2i> chessboardDestinationPoints { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+	// Top left, Top right, Bottom left, Bottom right
+	const std::vector<cv::Point2i> destinationCorners { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
 
 	const int TOP_LEFT_INDEX = 16;
 	const int TOP_RIGHT_INDEX = 18;
@@ -302,10 +303,26 @@ int main() {
 
 		bool completelyFound = cv::findChessboardCorners(frame, patternSize, chessboardCorners);
 		if (completelyFound) {
-			cv::circle(frame, chessboardCorners[TOP_LEFT_INDEX], 10, red);
-			cv::circle(frame, chessboardCorners[TOP_RIGHT_INDEX], 10, red);
-			cv::circle(frame, chessboardCorners[BOTTOM_LEFT_INDEX], 10, red);
-			cv::circle(frame, chessboardCorners[BOTTOM_RIGHT_INDEX], 10, red);
+			auto topLeft = chessboardCorners[TOP_LEFT_INDEX];
+			auto topRight = chessboardCorners[TOP_RIGHT_INDEX];
+			auto bottomLeft = chessboardCorners[BOTTOM_LEFT_INDEX];
+			auto bottomRight = chessboardCorners[BOTTOM_RIGHT_INDEX];
+
+			auto sourceCorners = std::vector<cv::Point> {
+				topLeft,
+				topRight,
+				bottomLeft,
+				bottomRight
+			};
+
+			const bool drawCorners = true;
+			if (drawCorners) {
+				for (const auto& corner : sourceCorners) {
+					cv::circle(frame, corner, 10, red);
+				}
+			}
+
+			auto homography = cv::findHomography(sourceCorners, destinationCorners);
 		}
 
 		/*
