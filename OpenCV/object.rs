@@ -18,6 +18,7 @@ struct Tetrahedron<'object> {
 }
 
 impl<'object> Tetrahedron<'object> {
+	// Create a tetrahedron with the points [a], [b], [c], and [d]
 	fn new(a: &'object Point, b: &'object Point, c: &'object Point, d: &'object Point) -> Tetrahedron<'object> {
 		Tetrahedron {
 			a, b, c, d
@@ -42,6 +43,7 @@ impl<'object> Object<'object> {
 		}
 	}
 
+	// {en-US} Add [component]
 	fn add_component(&mut self, component: Tetrahedron<'object>) {
 		self.components.push(component);
 	}

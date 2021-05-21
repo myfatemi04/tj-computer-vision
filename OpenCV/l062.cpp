@@ -14,18 +14,22 @@
 # define dbg(x)
 #endif
 
+// {en-US} Divide [numerator] by [denominator], rounding up.
 int _divideRoundUp(int numerator, int denominator) {
 	return (numerator + denominator - 1) / denominator;
 }
 
+// {en-US} Find the absolute value of [a]
 double _safeAbs(double a) {
 	return a < 0 ? -a : a;
 }
 
+// {en-US} Find the maximum between [a] and [b]
 int max(int a, int b) {
 	return (a > b) ? a : b;
 }
 
+// {en-US} Find the minimum between [a] and [b]
 int min(int a, int b) {
 	return (a < b) ? a : b;
 }
@@ -950,6 +954,7 @@ namespace lab6 {
 		}
 	}
 
+	// {en-US} Cast votes based on the edges in [edges] and the angles [angles], with a maximum radius of [maxRadius]
 	GrayscaleImage castVotes(GrayscaleImage edges, double **angles, int maxRadius) {
 		GrayscaleImage votes(edges.getWidth(), edges.getHeight());
 
@@ -1031,6 +1036,7 @@ namespace lab6 {
 	}
 
 	/**
+	 * {en-US} Find the radii of possible circles centered at ([x], [y]) from [minRadius] to [maxRadius], requiring a score of [minScore], based on edge magnitudes [magnitudes], angles [angles]
 	 * findRadii returns the radii that contain a certain number of edge pixels along their circumference. The radius is checked on the interval [minRadius, maxRadius). minScore specifies the minimum ratio of empty edges to fillled edges.
 	 */
 	std::vector<RadiusResult> findRadii(
@@ -1080,6 +1086,8 @@ namespace lab6 {
 	}
 
 	/**
+	 * {en-US} Deduplicate [circles] in a [imageWidth] by [imageHeight] image with [gridSquareWidth] by [gridSquareHeight] grid squares.
+	 * 
 	 * When there are several circles in roughly the same area, we use deduplication.
 	 * The way this works is by dividing the image into a grid. Then, we iterate through
 	 * the circles, keeping track of which grid squares already have a circle. If a grid
@@ -1195,6 +1203,7 @@ namespace lab6 {
 		COIN_TYPE_SILVER_DOLLAR = 5
 	};
 
+	// {en-US} Find the absolute error between [a] and [b]
 	double absoluteError(double a, double b) {
 		return _safeAbs(a - b);
 	}
@@ -1219,6 +1228,7 @@ namespace lab6 {
 		COIN_TYPE_SILVER_DOLLAR
 	};
 
+	// {en-US} Estimate the type of a coin with radius [unknownCoinRadius], assuming a penny has the radius [pennyRadius]
 	CoinType estimateCoinType(double unknownCoinRadius, double pennyRadius) {
 		double radiusRelativeToPenny = unknownCoinRadius / pennyRadius;
 
@@ -1269,6 +1279,7 @@ namespace lab6 {
 		}
 	}
 
+	// {en-US} Part 2
 	void part2() {
 		using tjcv::ColorImage;
 
@@ -1420,6 +1431,7 @@ namespace lab6 {
 	}
 }
 
+// {en-US} Entrypoint
 int main() {
 	lab6::part2();
 }

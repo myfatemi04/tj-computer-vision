@@ -77,6 +77,7 @@ namespace coins {
 		return leastErrorCoinType;
 	}
 
+	// {en-US} Find the penny radius, assuming the dime is the smallest radius among [circles]
 	// Estimates by assuming that the smallest radius is that of a dime
 	double findPennyRadiusDimeRadiusFallback(const Circles& circles) {
 		std::cout << "Finding penny radius went to fallback\n";
@@ -97,6 +98,7 @@ namespace coins {
 		return dimeRadius / COIN_SIZE_RELATIVE_TO_PENNY[COIN_TYPE_DIME];
 	}
 
+	// {en-US} Find the penny radius, given [circles] and the reference image [reference]
 	double findPennyRadius(const Circles& circles, const cv::Mat& reference) {
 		std::cout << "Finding penny radius\n";
 
@@ -143,6 +145,7 @@ namespace coins {
 	}
 }
 
+// {en-US} Format [cents] as $X.XX
 std::string formatMoney(int cents) {
 	int dollarCount = cents / 100;
 	int centCount = cents % 100;
@@ -153,6 +156,7 @@ std::string formatMoney(int cents) {
 	return ss.str();
 }
 
+// {en-US} Write the total [cents] and quantities [quantities] to [out]
 void writeResults(std::ostream& out, const int* quantities, int cents) {
 	out << "Result:\n";
 	out << quantities[coins::COIN_TYPE_PENNY] << " pennies\n";
