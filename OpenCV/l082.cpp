@@ -274,8 +274,12 @@ int main() {
 
 	cv::Mat frame;
 	std::vector<cv::Point2i> chessboardCorners;
-	const cv::Size patternSize = cv::Size(0, 0);
-	
+
+	// *internal* corners of the chessboard
+	const cv::Size patternSize = cv::Size(7, 7);
+	const cv::Scalar red = cv::Scalar(255, 0, 0);
+	const std::vector<cv::Point2i> chessboardDestinationPoints { { 0, 0 }, { 1, 0 }, { 1, 1 }, { 0, 1 } };
+
 	while (reader.read(frame)) {
 		if (!hasImageSize) {
 			auto fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
@@ -285,12 +289,23 @@ int main() {
 			auto size = cv::Size(width, height);
 			auto isColor = true;
 
-			writer.open("rotation.avi", fourcc, fps, size, isColor);
+			writer.open("chessboard_updated.avi", fourcc, fps, size, isColor);
 			hasImageSize = true;
+
+			std::cout << "Found image size: (" << width << ", " << height << ")\n";
 		}
 
-		cv::findChessboardCorners(frame, patternSize, chessboardCorners);
+		bool completelyFound = cv::findChessboardCorners(frame, patternSize, chessboardCorners);
 
-		// Process Chessboard corners
+		// if (chessboardCorners.size() > 0) {
+		// 	cv::drawChessboardCorners(frame, patternSize, chessboardCorners, completelyFound);
+		// }
+		if (completelyFound) {
+			for (const auto& corner : chessboardCorners) {
+				cv::circle(frame, corner, 10, red);
+			}
+		}
+
+		writer.write(frame);
 	}
 }
