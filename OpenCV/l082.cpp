@@ -328,12 +328,28 @@ int main()
 			{1, 1, 0},
 			{1, 1, 1},
 	};
-	std::vector<cv::Point2i> cubeImagePoints;
+	std::vector<cv::Point2f> cubeImagePoints;
 
 	const int TOP_LEFT_INDEX = 16;
 	const int TOP_RIGHT_INDEX = 18;
 	const int BOTTOM_LEFT_INDEX = 30;
 	const int BOTTOM_RIGHT_INDEX = 32;
+
+	const auto edges = new Edge[12]{
+			{0, 1},
+			{1, 3},
+			{3, 2},
+			{2, 0},
+
+			{4, 5},
+			{5, 7},
+			{7, 6},
+			{6, 4},
+
+			{0, 4},
+			{1, 5},
+			{2, 6},
+			{3, 7}};
 
 	cv::Size imageSize(0, 0);
 
@@ -402,8 +418,6 @@ int main()
 						rotationVector,
 						translationVector);
 
-				std::cout << "Projecting points" << std::endl;
-
 				cv::projectPoints(
 						cubeObjectPoints,
 						rotationVector,
@@ -413,6 +427,14 @@ int main()
 						cubeImagePoints);
 
 				std::cout << "Projected points" << std::endl;
+
+				for (int i = 0; i < 12; i++)
+				{
+					const Edge &edge = edges[i];
+					auto imagePointA = cubeImagePoints[edge.a];
+					auto imagePointB = cubeImagePoints[edge.b];
+					cv::line(frame, imagePointA, imagePointB, red);
+				}
 			}
 		}
 
